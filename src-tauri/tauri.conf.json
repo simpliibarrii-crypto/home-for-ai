@@ -1,0 +1,240 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AI Workplace",
+  "version": "1.0.0",
+  "identifier": "com.aiworkplace.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "AI Workplace",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1000,
+        "minHeight": 700,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "hiddenTitle": false,
+        "titleBarStyle": "visible",
+        "visible": true,
+        "focus": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
+        "contentProtection": false,
+        "theme": "system"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' data: blob: http://localhost:1420 http://localhost:8080 http://127.0.0.1:8080 https://api.aiworkplace.local; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:1420; style-src 'self' 'unsafe-inline' http://localhost:1420; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:1420 http://localhost:8080 http://127.0.0.1:8080 https://api.aiworkplace.local wss://api.aiworkplace.local;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/*",
+      "sidecars/*"
+    ],
+    "externalBin": [],
+    "copyright": "Copyright © 2024 AI Workplace Team",
+    "category": "Productivity",
+    "shortDescription": "AI Workplace Desktop Application",
+    "longDescription": "AI Workplace is a cross-platform desktop application for AI-powered productivity.",
+    "deb": {
+      "depends": [
+        "libwebkit2gtk-4.1-0",
+        "libayatana-appindicator3-1",
+        "librsvg2-common",
+        "python3",
+        "python3-pip"
+      ],
+      "section": "utils",
+      "priority": "optional"
+    },
+    "rpm": {
+      "depends": [
+        "webkit2gtk4.1",
+        "libayatana-appindicator-gtk3",
+        "librsvg2",
+        "python3",
+        "python3-pip"
+      ],
+      "license": "MIT",
+      "release": "1",
+      "epoch": 0
+    },
+    "appImage": {
+      "bundleMediaFramework": true
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "11.0",
+      "exceptionDomain": "api.aiworkplace.local",
+      "signingIdentity": "-",
+      "providerShortName": "",
+      "entitlements": "entitlements.plist",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "api.aiworkplace.local": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        },
+        "NSCameraUsageDescription": "AI Workplace needs camera access for video calls",
+        "NSMicrophoneUsageDescription": "AI Workplace needs microphone access for voice commands",
+        "NSDesktopFolderUsageDescription": "AI Workplace needs access to your Desktop folder for file operations",
+        "NSDocumentsFolderUsageDescription": "AI Workplace needs access to your Documents folder for file operations",
+        "NSDownloadsFolderUsageDescription": "AI Workplace needs access to your Downloads folder for file operations"
+      }
+    },
+    "windows": {
+      "certificateThumbprint": "",
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "wix": {
+        "language": "en-US",
+        "template": "wix/main.wxs",
+        "fragmentPaths": ["wix/fragments"],
+        "componentGroupRefs": [],
+        "componentRefs": [],
+        "featureRefs": [],
+        "mergeRefs": [],
+        "skipWebView2Install": false
+      }
+    },
+    "iOS": {
+      "developmentTeam": "",
+      "bundleIdentifier": "com.aiworkplace.desktop",
+      "displayName": "AI Workplace",
+      "version": "1.0.0",
+      "buildNumber": "1",
+      "icon": "icons/icon.icns",
+      "splashScreen": "icons/splash.png",
+      "entitlements": "entitlements.plist",
+      "infoPlist": {
+        "NSCameraUsageDescription": "AI Workplace needs camera access for video calls",
+        "NSMicrophoneUsageDescription": "AI Workplace needs microphone access for voice commands",
+        "NSPhotoLibraryUsageDescription": "AI Workplace needs photo library access for file uploads",
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "api.aiworkplace.local": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
+      }
+    },
+    "android": {
+      "package": "com.aiworkplace.desktop",
+      "versionCode": 1,
+      "versionName": "1.0.0",
+      "minSdkVersion": 24,
+      "targetSdkVersion": 34,
+      "compileSdkVersion": 34,
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MANAGE_EXTERNAL_STORAGE"
+      ],
+      "features": [
+        "android.hardware.camera",
+        "android.hardware.microphone"
+      ],
+      "application": {
+        "label": "AI Workplace",
+        "theme": "@style/AppTheme",
+        "icon": "@mipmap/ic_launcher",
+        "roundIcon": "@mipmap/ic_launcher_round",
+        "allowBackup": true,
+        "usesCleartextTraffic": true,
+        "networkSecurityConfig": "@xml/network_security_config"
+      }
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true,
+      "scope": {
+        "allow": ["http://localhost:8080/*", "https://api.aiworkplace.local/*"]
+      }
+    },
+    "fs": {
+      "scope": {
+        "allow": [
+          "$APPDATA/*",
+          "$DOCUMENT/*",
+          "$DOWNLOAD/*",
+          "$DESKTOP/*",
+          "$APPCONFIG/*"
+        ]
+      }
+    },
+    "dialog": {
+      "open": true,
+      "save": true
+    },
+    "clipboard-manager": {
+      "writeText": true,
+      "readText": true
+    },
+    "global-shortcut": {
+      "shortcuts": {
+        "toggle-window": "CommandOrControl+Shift+A"
+      }
+    },
+    "notification": {
+      "scope": {
+        "allow": ["*"]
+      }
+    },
+    "updater": {
+      "endpoints": ["https://api.aiworkplace.local/updates/{{current_version}}"],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ2QjREN0YzN0ZFRUNFQ0I5CldRREpDSjZJQktJR1IvVVVZMmRGcjJtQVdLVWhCT1lZN2k5V21XdTJQTzR4QW9HNTVKS0MK",
+      "windows": {
+        "installMode": "passive"
+      }
+    },
+    "http": {
+      "scope": [
+        "http://localhost:8080/*",
+        "http://127.0.0.1:8080/*",
+        "https://api.aiworkplace.local/*"
+      ]
+    },
+    "store": {
+      "scope": ["*"]
+    }
+  }
+}
