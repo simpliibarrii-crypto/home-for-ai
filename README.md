@@ -17,6 +17,18 @@ pipeline_tag: text-generation
 short_description: Enterprise desktop operations platform for local AI orchestration — zero-trust, cross-platform shell for the Raven AI ecosystem.
 ---
 
+## Table of Contents
+
+- [Quickstart](#quickstart)
+- [FAQ](#faq)
+- [Troubleshooting](#troubleshooting)
+- [Strategic Position](#strategic-position)
+- [Technical Architecture](#technical-architecture)
+- [Enterprise Capabilities](#enterprise-capabilities)
+- [Build & Deployment Options](#build--deployment-options)
+- [Compliance & Certification](#compliance--certification)
+- [Contact & Partnerships](#contact--partnerships)
+
 <p align="center">
   <a href="https://huggingface.co/bclermo/home-for-ai"><img src="https://img.shields.io/badge/%F0%9F%A4%97-Hugging%20Face%20Model-FFD21E?style=flat-square" alt="Hugging Face Model"></a>
   <a href="https://huggingface.co/spaces/bclermo/home-for-ai"><img src="https://img.shields.io/badge/%F0%9F%9A%80-Hugging%20Face%20Space-FF6B6B?style=flat-square" alt="Hugging Face Space"></a>
@@ -24,6 +36,9 @@ short_description: Enterprise desktop operations platform for local AI orchestra
   <a href="https://github.com/simpliibarrii-crypto/home-for-ai/releases"><img src="https://img.shields.io/github/v/release/simpliibarrii-crypto/home-for-ai?style=flat-square" alt="Release"></a>
   <a href="https://github.com/simpliibarrii-crypto/home-for-ai/actions"><img src="https://img.shields.io/github/actions/workflow/status/simpliibarrii-crypto/home-for-ai/ci-python.yml?style=flat-square&label=CI" alt="CI"></a>
   <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.0-purple?style=flat-square" alt="Code of Conduct"></a>
+  <a href="https://github.com/simpliibarrii-crypto/home-for-ai/stargazers"><img src="https://img.shields.io/github/stars/simpliibarrii-crypto/home-for-ai?style=flat-square&logo=github" alt="GitHub Stars"></a>
+  <a href="https://github.com/simpliibarrii-crypto/home-for-ai"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue?style=flat-square&logo=python" alt="Python Versions"></a>
+  <a href="https://github.com/simpliibarrii-crypto/home-for-ai/commits/main"><img src="https://img.shields.io/github/last-commit/simpliibarrii-crypto/home-for-ai?style=flat-square" alt="Last Commit"></a>
 </p>
 
 # Home for AI
@@ -389,6 +404,85 @@ Home for AI is built on the principles of:
 
 ### Vision
 **To become the global standard for enterprise AI desktop operations — powering the most critical AI workflows in science, healthcare, and research worldwide.**
+
+## Quickstart
+
+Get Home for AI running locally in minutes.
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/simpliibarrii-crypto/home-for-ai.git
+cd home-for-ai
+
+# 2. Install frontend dependencies
+npm install
+
+# 3. Install Python backend dependencies
+cd backend
+pip install -r requirements.txt
+cd ..
+
+# 4. Set up your LLM API key
+cp backend/.env.example backend/.env
+# Edit backend/.env and add your OPENROUTER_API_KEY
+
+# 5. Start the backend API
+cd backend && uvicorn main:app --reload &
+cd ..
+
+# 6. Launch the Tauri desktop app
+npm run tauri:dev
+```
+
+Open the API docs at `http://localhost:8000/docs` or the Tauri window.
+
+## FAQ
+
+**Is Home for AI cross-platform?**
+Yes. It runs on Windows, macOS, and Linux via Tauri v2. Mobile support (iOS, Android) is in development.
+
+**Why Tauri instead of Electron?**
+Tauri produces significantly smaller binaries (MB vs GB), uses less memory, and provides better performance through its Rust core while still allowing a React/TypeScript frontend.
+
+**Do I need Python installed?**
+The Tauri desktop app embeds the Python backend as a sidecar. For development, you need Python 3.11+ and the dependencies in `backend/requirements.txt`. For end users, the packaged app includes everything.
+
+**Does the app require an internet connection?**
+Core orchestration features work offline. LLM-powered features (agent trading decisions, skill learning) require an internet connection to reach the OpenRouter API.
+
+**How do I contribute?**
+See [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Troubleshooting
+
+**`cargo build` fails with missing webkit libraries**
+Install Tauri system dependencies for your OS:
+```bash
+# Ubuntu / Debian
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+# Fedora
+sudo dnf install webkit2gtk4.1-devel gtk3-devel libsoup3-devel
+```
+
+**`uvicorn` fails to start — port already in use**
+```bash
+# Find and kill the process on port 8000
+lsof -ti:8000 | xargs kill -9
+```
+
+**LLM agent returns "API key not configured"**
+Ensure `OPENROUTER_API_KEY` is set in `backend/.env` and that you have credits on your OpenRouter account.
+
+**Python tests fail with `ModuleNotFoundError`**
+Run from the `backend/` directory with the package installed:
+```bash
+cd backend
+pip install -e .
+pytest
+```
+
+**Tauri dev mode shows blank window**
+Ensure the Vite dev server is running (`npm run dev`) before launching `npm run tauri:dev`, or use `npm run tauri:dev` which starts both automatically.
 
 ---
 

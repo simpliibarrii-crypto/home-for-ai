@@ -14,23 +14,28 @@ jobs:
     name: Python tests
     runs-on: ubuntu-latest
     if: hashFiles('pyproject.toml') != ''
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - name: Install package and test tools
         run: |
           python -m pip install --upgrade pip
           pip install -e . pytest ruff black pynacl
       - name: Lint
         run: ruff check .
-        continue-on-error: true
       - name: Format check
         run: black --check .
-        continue-on-error: true
       - name: Tests
         run: pytest -q
+      - name: pip audit
+        run: |
+          pip install pip-audit
+          pip-audit
 
   node:
     name: Node build
@@ -56,14 +61,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - name: Cargo check root
         if: hashFiles('Cargo.toml') != ''
         run: cargo check
-        continue-on-error: true
       - name: Cargo check Tauri
         if: hashFiles('src-tauri/Cargo.toml') != ''
         run: cargo check --manifest-path src-tauri/Cargo.toml
-        continue-on-error: true
+      - name: Cargo clippy
+        if: hashFiles('Cargo.toml') != ''
+        run: cargo clippy -- -D warnings
+      - name: Cargo audit
+        if: hashFiles('Cargo.toml') != ''
+        run: |
+          cargo install cargo-audit
+          cargo audit
 
   secrets:
     name: Secret scan
@@ -71,4 +84,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
