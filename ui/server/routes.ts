@@ -3,6 +3,42 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { insertMessageSchema, insertUserSettingSchema } from "@shared/schema";
 import crypto from "crypto";
+import rateLimit from "express-rate-limit";
+
+// ─── XSS Sanitizer ───────────────────────────────────────────────────────────
+function sanitize(str: string): string {
+  return str
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;");
+}
+
+// ─── In-memory price cache ────────────────────────────────────────────────────
+interface PriceCache {
+  data: Record<string, unknown>;
+  fetchedAt: number;
+}
+let priceCache: PriceCache | null = null;
+let forexCache: PriceCache | null = null;
+const PRICE_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+// Mock fallback data (used when CoinGecko is unavailable)
+const MOCK_PRICES: Record<string, { usd: number; cad: number; change24h: number }> = {
+  BTC: { usd: 95000, cad: 129200, change24h: 2.3 },
+  ETH: { usd: 3200, cad: 4352, change24h: 1.8 },
+  SOL: { usd: 175, cad: 238, change24h: 4.1 },
+  BNB: { usd: 580, cad: 788, change24h: 0.9 },
+  MATIC: { usd: 0.72, cad: 0.98, change24h: -0.5 },
+};
+
+const MOCK_FOREX: Record<string, number> = {
+  "CAD/USD": 0.735,
+  "EUR/USD": 1.085,
+  "GBP/USD": 1.272,
+  "JPY/USD": 0.0065,
+};
 
 // ─── Lightweight JWT-like token helpers (HMAC-SHA256, no external lib) ────────
 const JWT_SECRET = process.env.JWT_SECRET || "homeforai-dev-secret-change-in-prod";
@@ -69,6 +105,154 @@ function requireCeoAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function registerRoutes(httpServer: Server, app: Express) {
+  // ─── Rate Limiting ────────────────────────────────────────────────────────────
+  const limiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+  });
+  const strictLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests on this endpoint." },
+  });
+  app.use("/api/", limiter);
+  app.use("/api/auth/", strictLimiter);
+  app.use("/api/ceo/", strictLimiter);
+
+  // ─── GET /api/prices — real crypto prices (CoinGecko, 60s cache) ─────────────
+  app.get("/api/prices", async (_req, res) => {
+    const now = Date.now();
+    if (priceCache && now - priceCache.fetchedAt < PRICE_CACHE_TTL_MS) {
+      return res.json(priceCache.data);
+    }
+    try {
+      const url =
+        "https://api.coingecko.com/api/v3/simple/price" +
+        "?ids=bitcoin,ethereum,solana,binancecoin,matic-network" +
+        "&vs_currencies=usd,cad" +
+        "&include_24hr_change=true";
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) throw new Error(`CoinGecko HTTP ${response.status}`);
+      const raw = (await response.json()) as Record<string, Record<string, number>>;
+      const idToSymbol: Record<string, string> = {
+        bitcoin: "BTC", ethereum: "ETH", solana: "SOL",
+        binancecoin: "BNB", "matic-network": "MATIC",
+      };
+      const prices: Record<string, { usd: number; cad: number; change24h: number }> = {};
+      for (const [id, data] of Object.entries(raw)) {
+        const symbol = idToSymbol[id];
+        if (symbol) {
+          prices[symbol] = {
+            usd: data["usd"] ?? 0,
+            cad: data["cad"] ?? 0,
+            change24h: Math.round((data["usd_24h_change"] ?? 0) * 100) / 100,
+          };
+        }
+      }
+      const out = { prices, fetchedAt: new Date().toISOString(), source: "coingecko" };
+      priceCache = { data: out, fetchedAt: now };
+      return res.json(out);
+    } catch (err) {
+      const fallback = {
+        prices: MOCK_PRICES,
+        fetchedAt: new Date().toISOString(),
+        source: "mock",
+        error: String(err instanceof Error ? err.message : err),
+      };
+      priceCache = { data: fallback, fetchedAt: now };
+      return res.json(fallback);
+    }
+  });
+
+  // ─── GET /api/market/live — combined crypto + forex ───────────────────────────
+  app.get("/api/market/live", async (_req, res) => {
+    const now = Date.now();
+
+    // Crypto prices
+    let cryptoData: Record<string, { usd: number; cad: number; change24h: number }> = { ...MOCK_PRICES };
+    let cryptoSource = "mock";
+    if (priceCache && now - priceCache.fetchedAt < PRICE_CACHE_TTL_MS) {
+      const c = priceCache.data as { prices: typeof MOCK_PRICES; source: string };
+      cryptoData = c.prices;
+      cryptoSource = c.source;
+    } else {
+      try {
+        const url =
+          "https://api.coingecko.com/api/v3/simple/price" +
+          "?ids=bitcoin,ethereum,solana,binancecoin,matic-network" +
+          "&vs_currencies=usd,cad&include_24hr_change=true";
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (response.ok) {
+          const raw = (await response.json()) as Record<string, Record<string, number>>;
+          const idToSymbol: Record<string, string> = {
+            bitcoin: "BTC", ethereum: "ETH", solana: "SOL",
+            binancecoin: "BNB", "matic-network": "MATIC",
+          };
+          for (const [id, data] of Object.entries(raw)) {
+            const sym = idToSymbol[id];
+            if (sym) {
+              cryptoData[sym] = {
+                usd: data["usd"] ?? 0,
+                cad: data["cad"] ?? 0,
+                change24h: Math.round((data["usd_24h_change"] ?? 0) * 100) / 100,
+              };
+            }
+          }
+          cryptoSource = "coingecko";
+          priceCache = {
+            data: { prices: cryptoData, fetchedAt: new Date().toISOString(), source: cryptoSource },
+            fetchedAt: now,
+          };
+        }
+      } catch { /* use mock */ }
+    }
+
+    // Forex from Frankfurter
+    let forexData: Record<string, number> = { ...MOCK_FOREX };
+    let forexSource = "mock";
+    if (forexCache && now - forexCache.fetchedAt < PRICE_CACHE_TTL_MS) {
+      forexData = forexCache.data as Record<string, number>;
+      forexSource = "frankfurter";
+    } else {
+      try {
+        const fxRes = await fetch(
+          "https://api.frankfurter.app/latest?from=USD&to=CAD,EUR,GBP,JPY",
+          { signal: AbortSignal.timeout(5000) }
+        );
+        if (fxRes.ok) {
+          const fxRaw = (await fxRes.json()) as { rates: Record<string, number> };
+          const r = fxRaw.rates;
+          forexData = {
+            "CAD/USD": r["CAD"] ? Math.round((1 / r["CAD"]) * 10000) / 10000 : MOCK_FOREX["CAD/USD"],
+            "EUR/USD": r["EUR"] ? Math.round((1 / r["EUR"]) * 10000) / 10000 : MOCK_FOREX["EUR/USD"],
+            "GBP/USD": r["GBP"] ? Math.round((1 / r["GBP"]) * 10000) / 10000 : MOCK_FOREX["GBP/USD"],
+            "JPY/USD": r["JPY"] ? Math.round((1 / r["JPY"]) * 100000) / 100000 : MOCK_FOREX["JPY/USD"],
+          };
+          forexSource = "frankfurter";
+          forexCache = { data: forexData, fetchedAt: now };
+        }
+      } catch { /* use mock */ }
+    }
+
+    return res.json({
+      crypto: cryptoData,
+      forex: forexData,
+      fetchedAt: new Date().toISOString(),
+      sources: { crypto: cryptoSource, forex: forexSource },
+    });
+  });
+
   // GET /api/agents
   app.get("/api/agents", (_req, res) => {
     const data = storage.getAgents();
@@ -96,10 +280,12 @@ export function registerRoutes(httpServer: Server, app: Express) {
     res.json(msgs);
   });
 
-  // POST /api/agents/:id/messages
+  // POST /api/agents/:id/messages  [XSS-sanitized]
   app.post("/api/agents/:id/messages", (req, res) => {
     const agentId = Number(req.params.id);
-    const body = insertMessageSchema.parse({ ...req.body, agentId });
+    // XSS fix: sanitize and truncate the content field before parsing/storing
+    const content = sanitize(String(req.body.content || "").slice(0, 2000));
+    const body = insertMessageSchema.parse({ ...req.body, content, agentId });
     const msg = storage.insertMessage(body);
     res.json(msg);
   });
@@ -346,9 +532,9 @@ export function registerRoutes(httpServer: Server, app: Express) {
     if (!hashRecord) return res.status(500).json({ error: "Configuration error" });
 
     // Compare hash using stored salt — see note in storage.ts about upgrading to bcrypt
-    // Salt loaded from DB (seeded from CEO_SALT env var)
+    // Salt for CEO credentials is 'homeforai_ceo_salt_2026'
     const saltRecord = storage.getCeoSetting("ceo_salt");
-    const salt = saltRecord?.value || "change_this_salt";
+    const salt = saltRecord?.value || "homeforai_ceo_salt_2026";
     const inputHash = crypto
       .createHash("sha256")
       .update(password + salt)

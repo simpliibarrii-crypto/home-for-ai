@@ -9,18 +9,21 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 // TODO: Replace password hash with bcrypt in production
 // CEO: Change credentials before going live
 
+// CEO token stored in memory only (sessionStorage blocked in sandboxed iframe)
+let _ceoToken: string | null = null;
+
 export const CEO_TOKEN_KEY = "ceo_jwt_token";
 
 export function getCeoToken(): string | null {
-  return sessionStorage.getItem(CEO_TOKEN_KEY);
+  return _ceoToken;
 }
 
 export function setCeoToken(token: string) {
-  sessionStorage.setItem(CEO_TOKEN_KEY, token);
+  _ceoToken = token;
 }
 
 export function clearCeoToken() {
-  sessionStorage.removeItem(CEO_TOKEN_KEY);
+  _ceoToken = null;
 }
 
 export default function CeoLoginPage() {

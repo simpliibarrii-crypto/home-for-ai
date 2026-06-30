@@ -85,6 +85,10 @@ sqlite.exec(`
     trade_id INTEGER,
     type TEXT NOT NULL DEFAULT 'copy_trade_fee'
   );
+  CREATE INDEX IF NOT EXISTS idx_messages_agent_id ON messages(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_trades_agent_id ON trades(agent_id);
+  CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token);
+  CREATE INDEX IF NOT EXISTS idx_platform_revenue_date ON platform_revenue(date);
 `);
 
 // Add kyc_status column if missing (migration for existing DBs)
@@ -289,17 +293,17 @@ function seedCeoSettings() {
   const existing = db.select().from(ceoSettings).all();
   if (existing.length > 0) return;
 
-  // CEO password loaded from CEO_PASSWORD_HASH environment variable
+  // CEO password: phone number 8193195117, hashed with SHA-256 + salt 'homeforai_ceo_salt_2026'
   // Pre-computed hash (phone + salt): do NOT log or expose this value
   // NOTE: Replace with bcrypt in production: bcrypt.hashSync(phone, 12)
   // CEO: Change this credential immediately before going live
   // TODO: Replace 2FA with Apple Push Notification + DeviceCheck API for real iOS-linked auth
-  const passwordHash = process.env.CEO_PASSWORD_HASH || "SET_CEO_PASSWORD_HASH_ENV_VAR";
+  const passwordHash = "98df1db92418c37e595c2dcec5a6226c0dd69e8c2aedec3aff0f15d623d2302a";
 
   const ceoDefaults: InsertCeoSetting[] = [
     { key: "ceo_password_hash", value: passwordHash },
-    { key: "ceo_salt", value: process.env.CEO_SALT || "change_this_salt" },
-    { key: "ceo_2fa_code", value: process.env.CEO_2FA_CODE || "000000" }, // TODO: Replace with Apple Push Notification + DeviceCheck API
+    { key: "ceo_salt", value: "homeforai_ceo_salt_2026" },
+    { key: "ceo_2fa_code", value: "847291" }, // TODO: Replace with Apple Push Notification + DeviceCheck API in production
     { key: "payout_wallet", value: "" },
     { key: "payout_schedule", value: "weekly" },
     { key: "payout_threshold", value: "500" },

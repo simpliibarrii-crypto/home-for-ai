@@ -48,15 +48,12 @@ const HOW_IT_WORKS = [
 const HOW_HIDDEN_KEY = "howItWorksCollapsed";
 
 function HowItWorks() {
-  const [collapsed, setCollapsed] = useState(() => {
-    return localStorage.getItem(HOW_HIDDEN_KEY) === "true";
-  });
+  const [collapsed, setCollapsed] = useState(false);
 
   function toggle() {
     const next = !collapsed;
     setCollapsed(next);
-    localStorage.setItem(HOW_HIDDEN_KEY, String(next));
-    // Also persist to server settings (non-critical)
+    // Persist to server settings (non-critical)
     fetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

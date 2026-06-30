@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Bell, X, Check } from "lucide-react";
 
-const PREF_KEY = "push_notifications_prompted";
+// Track in memory (localStorage blocked in sandboxed iframe)
+let _pushPrompted = false;
 
 export function PushNotificationToast() {
   const [visible, setVisible] = useState(false);
@@ -9,7 +10,7 @@ export function PushNotificationToast() {
 
   useEffect(() => {
     // Only show once, and only if the browser supports notifications and user is logged in
-    const alreadyPrompted = localStorage.getItem(PREF_KEY);
+    const alreadyPrompted = _pushPrompted;
     if (alreadyPrompted) return;
 
     // Delay a bit after login to feel natural
@@ -27,7 +28,7 @@ export function PushNotificationToast() {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
         setState("granted");
-        localStorage.setItem(PREF_KEY, "granted");
+        _pushPrompted = true;
         // Also persist to user settings
         try {
           await fetch("/api/settings", {
@@ -39,7 +40,7 @@ export function PushNotificationToast() {
         setTimeout(() => setVisible(false), 2000);
       } else {
         setState("denied");
-        localStorage.setItem(PREF_KEY, "denied");
+        _pushPrompted = true;
         setTimeout(() => setVisible(false), 1500);
       }
     } catch {
@@ -49,7 +50,7 @@ export function PushNotificationToast() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(PREF_KEY, "dismissed");
+    _pushPrompted = true;
     setVisible(false);
   };
 

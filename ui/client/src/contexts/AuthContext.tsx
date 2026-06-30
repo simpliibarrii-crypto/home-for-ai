@@ -24,16 +24,17 @@ const AuthContext = createContext<AuthContextValue>({
   logout: () => {},
 });
 
-const TOKEN_KEY = "hfai_token";
+// Token stored in memory only (localStorage blocked in sandboxed iframe)
+let _memToken: string | null = null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount: try to restore session from localStorage
+  // On mount: try to restore session from in-memory token
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
+    const stored = _memToken;
     if (!stored) {
       setIsLoading(false);
       return;
@@ -48,19 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
       })
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
+        _memToken = null;
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback((newToken: string, newUser: AuthUser) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
+    _memToken = newToken;
     setToken(newToken);
     setUser(newUser);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
+    _memToken = null;
     setToken(null);
     setUser(null);
   }, []);
