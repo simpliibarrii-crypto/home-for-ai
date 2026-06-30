@@ -1,0 +1,7 @@
+PLACEHOLDER — Replace with actual 512×512 PNG icon.
+Requirements:
+- Size: 512×512 px
+- Format: PNG (no transparency for iOS)
+- Background: #050508 (deep space dark)
+- Content: Cat paw / Home for AI logo centered
+- Safe area: keep logo within inner 80% to avoid corner clipping

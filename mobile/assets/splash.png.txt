@@ -1,0 +1,7 @@
+PLACEHOLDER — Replace with actual splash screen PNG.
+Requirements:
+- Size: 1284×2778 px (iPhone 15 Pro Max) or use 1200×1200 safe crop
+- Format: PNG
+- Background: #050508
+- Logo centered at ~40% from top
+- "Home for AI" wordmark below logo

@@ -1,0 +1,83 @@
+# ─── Blockchain dependencies for home-for-ai-backend ─────────────────────────
+#
+# Install with: pip install -r requirements-blockchain.txt
+#
+# Python >= 3.11 required (uses dataclasses with __slots__, match statements)
+#
+# All version pins are lower-bound minimums; tested range noted in comments.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Web3 / EVM ────────────────────────────────────────────────────────────────
+
+# web3.py — Ethereum JSON-RPC, ABI encoding, transaction signing
+# Requires Python >= 3.8; v7.x is the 2024/2025 stable release
+web3>=7.0.0
+
+# eth-account — signing, key derivation, UserOperation signing
+# Used in: eip4337.py, wallet_manager.py
+eth-account>=0.13.0
+
+# eth-keys — secp256k1 key operations (dependency of eth-account; pinned for security)
+eth-keys>=0.6.0
+
+# eth-abi — ABI encoding/decoding for smart contract calls
+# Used in: eip4337.py (encode UserOperation), converter.py
+eth-abi>=5.0.0
+
+# eth-typing — typed helpers (ChecksumAddress, HexStr, etc.)
+eth-typing>=5.0.0
+
+# hexbytes — bytes subclass with hex representation
+hexbytes>=1.0.0
+
+# ── BIP-39 / HD Wallet ────────────────────────────────────────────────────────
+
+# mnemonic — BIP-39 mnemonic generation and validation
+# Used in: wallet_manager.py
+mnemonic>=0.21
+
+# ── HTTP (async) ──────────────────────────────────────────────────────────────
+
+# httpx — async HTTP client for CoinGecko, bundler RPC
+# Used in: converter.py, eip4337.py
+httpx>=0.27.0
+
+# ── Cryptography ──────────────────────────────────────────────────────────────
+
+# cryptography — PBKDF2, AES-GCM (for encrypted wallet storage)
+cryptography>=43.0.0
+
+# coincurve — fast secp256k1 Python binding (optional, speeds up key derivation)
+# Uncomment if performance of BIP-32 derivation matters at scale:
+# coincurve>=20.0.0
+
+# ── FastAPI / async runtime ───────────────────────────────────────────────────
+
+# FastAPI is already in the main requirements.txt — listed here for reference
+fastapi>=0.115.0
+
+# Pydantic v2 — required for FastAPI 0.100+
+pydantic>=2.9.0
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+
+# pytest-asyncio — async test support
+pytest-asyncio>=0.24.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Installation notes:
+#
+# 1. Install base requirements first:
+#    pip install -r requirements.txt
+#
+# 2. Install blockchain extras:
+#    pip install -r requirements-blockchain.txt
+#
+# 3. For production, use the locked lockfile (pip-compile recommended):
+#    pip-compile requirements-blockchain.txt --output-file requirements-blockchain.lock
+#    pip install -r requirements-blockchain.lock
+#
+# 4. Solana support (SVM chains) requires additional dependencies:
+#    pip install solana solders anchorpy
+#    (not included here — added as separate requirements-solana.txt)
+# ─────────────────────────────────────────────────────────────────────────────

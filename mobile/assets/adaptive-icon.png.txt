@@ -1,0 +1,6 @@
+PLACEHOLDER — Android adaptive icon foreground layer.
+Requirements:
+- Size: 1024×1024 px
+- Format: PNG with transparency
+- Content: Cat paw logo only (no background — backgroundColor in app.json handles it)
+- Safe area: inner 66% (adaptive icon can be cropped to circle/squircle)
