@@ -92,4 +92,5 @@ coverage/
 # Misc
 *.tmp
 *.temp
-.cache/
+.cache/hf-space/
+hf-space/
