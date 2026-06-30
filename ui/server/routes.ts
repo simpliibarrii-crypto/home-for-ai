@@ -346,9 +346,9 @@ export function registerRoutes(httpServer: Server, app: Express) {
     if (!hashRecord) return res.status(500).json({ error: "Configuration error" });
 
     // Compare hash using stored salt — see note in storage.ts about upgrading to bcrypt
-    // Salt for CEO credentials is 'homeforai_ceo_salt_2026'
+    // Salt loaded from DB (seeded from CEO_SALT env var)
     const saltRecord = storage.getCeoSetting("ceo_salt");
-    const salt = saltRecord?.value || "homeforai_ceo_salt_2026";
+    const salt = saltRecord?.value || "change_this_salt";
     const inputHash = crypto
       .createHash("sha256")
       .update(password + salt)
