@@ -1,0 +1,293 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Deep Space palette — HSL values, no hsl() wrapper */
+    --background: 240 25% 2%;
+    --foreground: 220 20% 92%;
+    --card: 230 30% 5%;
+    --card-foreground: 220 20% 92%;
+    --popover: 230 30% 5%;
+    --popover-foreground: 220 20% 92%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 230 25% 10%;
+    --secondary-foreground: 220 20% 80%;
+    --muted: 230 20% 12%;
+    --muted-foreground: 220 15% 55%;
+    --accent: 243 75% 59%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 230 20% 12%;
+    --input: 230 20% 12%;
+    --ring: 243 75% 59%;
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --indigo: #4F46E5;
+    --teal: #06B6D4;
+    --gold: #F59E0B;
+    --profit: #10B981;
+    --loss: #EF4444;
+    --surface-1: rgba(255,255,255,0.03);
+    --surface-2: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.08);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .font-mono, code, .price, .pnl {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.glass-strong {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Gradient borders */
+.gradient-border {
+  position: relative;
+  background: linear-gradient(rgba(8,11,20,1), rgba(8,11,20,1)) padding-box,
+    linear-gradient(135deg, rgba(79,70,229,0.5), rgba(6,182,212,0.3), rgba(79,70,229,0.1)) border-box;
+  border: 1px solid transparent;
+}
+
+/* Agent card glow when TRADING */
+.agent-trading {
+  animation: tradingGlow 2s ease-in-out infinite;
+}
+
+@keyframes tradingGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(79,70,229,0.2), 0 0 20px rgba(79,70,229,0.05);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(79,70,229,0.5), 0 0 40px rgba(79,70,229,0.15);
+  }
+}
+
+/* Agent avatar pulse */
+.agent-pulse {
+  animation: agentPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes agentPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Copy trade gold ring */
+.copy-trade-active {
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.6), 0 0 20px rgba(245,158,11,0.1);
+}
+
+/* Market Pulse Ticker */
+.ticker-wrap {
+  overflow: hidden;
+  width: 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%);
+}
+
+.ticker-content {
+  display: flex;
+  width: max-content;
+  animation: ticker 60s linear infinite;
+}
+
+.ticker-content:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-content > *:first-child {
+  padding-left: 16px;
+}
+
+/* Number tick animation */
+.tick-up {
+  animation: tickUp 0.3s ease-out;
+  color: #10B981;
+}
+
+.tick-down {
+  animation: tickDown 0.3s ease-out;
+  color: #EF4444;
+}
+
+@keyframes tickUp {
+  0% { transform: translateY(4px); opacity: 0.6; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes tickDown {
+  0% { transform: translateY(-4px); opacity: 0.6; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Sparkline SVG */
+.sparkline {
+  filter: drop-shadow(0 0 4px rgba(6,182,212,0.4));
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(79,70,229,0.4);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(79,70,229,0.7);
+}
+
+/* Nav rail */
+.nav-icon {
+  @apply relative flex items-center justify-center w-12 h-12 rounded-xl cursor-pointer transition-all duration-200;
+  color: rgba(255,255,255,0.35);
+}
+
+.nav-icon:hover {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.06);
+}
+
+.nav-icon.active {
+  color: #4F46E5;
+  background: rgba(79,70,229,0.15);
+}
+
+.nav-icon .nav-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  white-space: nowrap;
+  background: rgba(8,11,20,0.95);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.9);
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  padding: 4px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.15s ease;
+  z-index: 100;
+}
+
+.nav-icon:hover .nav-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Status badge */
+.badge-trading {
+  background: rgba(79,70,229,0.2);
+  color: #818CF8;
+  border: 1px solid rgba(79,70,229,0.3);
+}
+.badge-idle {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.45);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.badge-analyzing {
+  background: rgba(6,182,212,0.15);
+  color: #22D3EE;
+  border: 1px solid rgba(6,182,212,0.25);
+}
+
+/* Chat bubbles */
+.chat-bubble-agent {
+  background: rgba(79,70,229,0.1);
+  border: 1px solid rgba(79,70,229,0.15);
+  border-radius: 0 1rem 1rem 1rem;
+}
+
+.chat-bubble-user {
+  background: rgba(79,70,229,0.25);
+  border: 1px solid rgba(79,70,229,0.3);
+  border-radius: 1rem 0 1rem 1rem;
+}
+
+/* Sentiment meter */
+.sentiment-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #EF4444 0%, #F59E0B 50%, #10B981 100%);
+}
+
+/* Pie chart colors */
+.pie-stocks { fill: #4F46E5; }
+.pie-crypto { fill: #06B6D4; }
+.pie-forex { fill: #F59E0B; }
+.pie-bonds { fill: #10B981; }
+.pie-commodities { fill: #8B5CF6; }
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Override for animations */
+.ticker-content, .agent-trading, .agent-pulse {
+  transition: none;
+}
+
+/* Footer */
+.footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.02);
+}
