@@ -2,6 +2,10 @@
 language:
 - en
 license: mit
+title: Home for AI
+emoji: 🏠
+colorFrom: gray
+colorTo: indigo
 tags:
 - home-for-ai
 - desktop-orchestration
@@ -10,6 +14,7 @@ tags:
 - local-first
 library_name: custom
 pipeline_tag: text-generation
+short_description: Enterprise desktop operations platform for local AI orchestration — zero-trust, cross-platform shell for the Raven AI ecosystem.
 ---
 
 <p align="center">
