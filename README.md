@@ -29,7 +29,7 @@ short_description: Enterprise desktop operations platform for local AI orchestra
 # Home for AI
 
 <p align="center">
-  <img src="assets/app-icon.svg" alt="Home for AI Logo" width="200" height="200" />
+  <img src="assets/raven-logo.svg" alt="Home for AI Logo" width="200" height="200" />
 </p>
 
 <p align="center">
@@ -48,7 +48,7 @@ short_description: Enterprise desktop operations platform for local AI orchestra
 </p>
 
 <p align="center">
-   <img src="assets/home-ai-banner.svg" alt="Home for AI Banner" width="100%" />
+   <img src="assets/home-for-ai-banner.webp" alt="Home for AI Banner" width="100%" />
 </p>
 
 ## Strategic Position
