@@ -1,3 +1,17 @@
+---
+language:
+- en
+license: mit
+tags:
+- home-for-ai
+- desktop-orchestration
+- ai-agents
+- sovereign-computing
+- local-first
+library_name: custom
+pipeline_tag: text-generation
+---
+
 # Home for AI
 
 <p align="center">
