@@ -295,7 +295,8 @@ function CountrySheet({
 
 // ─── Interactive World Map ────────────────────────────────────────────────────
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+import geoData from "../assets/countries-110m.json";
+const GEO_URL = geoData as unknown as string;
 
 // ISO numeric to ISO alpha-3 mapping for key countries
 const NUM_TO_ALPHA3: Record<string, string> = {
@@ -458,7 +459,7 @@ function SentimentMeter({ item }: { item: SentimentItem }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MarketPage() {
-  const { data, isLoading } = useQuery<MarketData>({
+  const { data, isLoading, isError } = useQuery<MarketData>({
     queryKey: ["/api/market"],
   });
 
@@ -470,6 +471,16 @@ export default function MarketPage() {
     setSheetOpen(true);
   }, []);
 
+  if (isError) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-3">
+          <p className="text-red-400 font-semibold">Failed to load market data</p>
+          <p className="text-muted-foreground text-sm">Check your connection and try refreshing</p>
+        </div>
+      </div>
+    );
+  }
   if (isLoading || !data) {
     return (
       <div className="p-6 lg:p-8 space-y-6">

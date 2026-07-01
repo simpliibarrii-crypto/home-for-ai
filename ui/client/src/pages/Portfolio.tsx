@@ -186,7 +186,7 @@ function PortfolioSkeleton() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PortfolioPage() {
-  const { data, isLoading } = useQuery<PortfolioData>({
+  const { data, isLoading, isError } = useQuery<PortfolioData>({
     queryKey: ["/api/portfolio"],
   });
 
@@ -204,6 +204,16 @@ export default function PortfolioPage() {
     },
   });
 
+  if (isError) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-3">
+          <p className="text-red-400 font-semibold">Failed to load portfolio data</p>
+          <p className="text-muted-foreground text-sm">Check your connection and try refreshing</p>
+        </div>
+      </div>
+    );
+  }
   if (isLoading || !data) {
     return <PortfolioSkeleton />;
   }

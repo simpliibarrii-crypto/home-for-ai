@@ -41,20 +41,21 @@ const MOCK_FOREX: Record<string, number> = {
 };
 
 // ─── Lightweight JWT-like token helpers (HMAC-SHA256, no external lib) ────────
-const JWT_SECRET = process.env.JWT_SECRET || "homeforai-dev-secret-change-in-prod";
+// Use env vars in production; fall back to a randomly-seeded default in dev/sandbox.
+// The fallback is generated at process start so it changes on each restart (invalidates old JWTs on redeploy — acceptable for a prototype).
+const _devFallback = () => require("crypto").randomBytes(32).toString("hex");
+const JWT_SECRET: string = process.env.JWT_SECRET || _devFallback();
+const CEO_JWT_SECRET: string = process.env.CEO_JWT_SECRET || _devFallback();
+if (!process.env.JWT_SECRET) console.warn("[WARN] JWT_SECRET not set — using ephemeral secret. Set JWT_SECRET in production.");
 
-// CEO uses a separate JWT secret for isolation
-// CEO: Replace CEO_JWT_SECRET with a strong random value in production
-const CEO_JWT_SECRET = process.env.CEO_JWT_SECRET || "homeforai_ceo_jwt_secret_2026";
-
-function signToken(payload: object, secret = JWT_SECRET): string {
+function signToken(payload: object, secret: string = JWT_SECRET!): string {
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const sig = crypto.createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
   return `${header}.${body}.${sig}`;
 }
 
-function verifyToken(token: string, secret = JWT_SECRET): Record<string, unknown> | null {
+function verifyToken(token: string, secret: string = JWT_SECRET!): Record<string, unknown> | null {
   try {
     const [header, body, sig] = token.split(".");
     const expected = crypto.createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
@@ -266,8 +267,11 @@ export function registerRoutes(httpServer: Server, app: Express) {
     res.json(agent);
   });
 
-  // PATCH /api/agents/:id/copy-trade
+  // PATCH /api/agents/:id/copy-trade  [auth required]
   app.patch("/api/agents/:id/copy-trade", (req, res) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Bearer ")) return res.status(401).json({ error: "Unauthorized" });
+    if (!verifyToken(auth.slice(7))) return res.status(401).json({ error: "Invalid token" });
     const { enabled } = req.body;
     const agent = storage.updateAgentCopyTrade(Number(req.params.id), Boolean(enabled));
     if (!agent) return res.status(404).json({ error: "Agent not found" });
@@ -315,6 +319,9 @@ export function registerRoutes(httpServer: Server, app: Express) {
   ]);
 
   app.patch("/api/settings", (req, res) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Bearer ")) return res.status(401).json({ error: "Unauthorized" });
+    if (!verifyToken(auth.slice(7))) return res.status(401).json({ error: "Invalid token" });
     const { key, value } = req.body;
     if (!key || value === undefined) return res.status(400).json({ error: "key and value required" });
     if (!ALLOWED_SETTING_KEYS.has(key)) return res.status(400).json({ error: "Invalid setting key" });
@@ -435,7 +442,7 @@ export function registerRoutes(httpServer: Server, app: Express) {
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
     storage.createAuthToken({ token, email, expiresAt, used: 0 });
     // TODO: Replace with real email delivery (SendGrid, Resend, AWS SES, etc.)
-    res.json({ success: true, message: "Magic link sent", token }); // token returned for demo
+    res.json({ success: true, message: "Magic link sent. Check your email." }); // token NOT returned — use /api/auth/verify with the link
   });
 
   // POST /api/auth/verify — verify a magic-link / QR token
@@ -532,7 +539,6 @@ export function registerRoutes(httpServer: Server, app: Express) {
     if (!hashRecord) return res.status(500).json({ error: "Configuration error" });
 
     // Compare hash using stored salt — see note in storage.ts about upgrading to bcrypt
-    // Salt for CEO credentials is 'homeforai_ceo_salt_2026'
     const saltRecord = storage.getCeoSetting("ceo_salt");
     const salt = saltRecord?.value || "homeforai_ceo_salt_2026";
     const inputHash = crypto

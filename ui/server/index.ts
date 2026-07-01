@@ -10,7 +10,26 @@ const app = express();
 const httpServer = createServer(app);
 
 // Security headers (X-Frame-Options, X-Content-Type-Options, HSTS, etc.)
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: [
+        "'self'",
+        "https://api.coingecko.com",
+        "https://api.frankfurter.app",
+        "https://cdn.jsdelivr.net",
+      ],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
 declare module "http" {
   interface IncomingMessage {
