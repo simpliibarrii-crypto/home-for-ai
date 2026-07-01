@@ -696,4 +696,269 @@ export function registerRoutes(httpServer: Server, app: Express) {
     storage.upsertSetting("lastBroadcast" as any, message);
     res.json({ success: true, recipients: storage.getAllUsers().length });
   });
+
+  // ────────────────── MARKET DATA ENDPOINTS ──────────────────────────────────
+
+  // GET /api/market/assets — returns all 20 assets with full market data
+  app.get("/api/market/assets", (_req, res) => {
+    const seed = Math.floor(Date.now() / (1000 * 60 * 5)); // refreshes every 5 min
+    const rng = (n: number, min: number, max: number) => {
+      const x = Math.abs(Math.sin(seed * 9301 + n * 49297 + 233)) % 1;
+      return min + x * (max - min);
+    };
+
+    const ASSET_DATA = [
+      { symbol: "BTC",  name: "Bitcoin",       basePrice: 67000,     mcap: 1320000, vol: 42800 },
+      { symbol: "ETH",  name: "Ethereum",      basePrice: 3400,      mcap: 408000,  vol: 18400 },
+      { symbol: "BNB",  name: "BNB",           basePrice: 610,       mcap: 91000,   vol: 1800  },
+      { symbol: "SOL",  name: "Solana",        basePrice: 187,       mcap: 82000,   vol: 4100  },
+      { symbol: "ADA",  name: "Cardano",       basePrice: 0.48,      mcap: 17000,   vol: 890   },
+      { symbol: "DOT",  name: "Polkadot",      basePrice: 7.2,       mcap: 10000,   vol: 420   },
+      { symbol: "AVAX", name: "Avalanche",     basePrice: 38,        mcap: 15600,   vol: 780   },
+      { symbol: "MATIC",name: "Polygon",       basePrice: 0.72,      mcap: 6800,    vol: 330   },
+      { symbol: "LINK", name: "Chainlink",     basePrice: 14.5,      mcap: 8500,    vol: 520   },
+      { symbol: "UNI",  name: "Uniswap",       basePrice: 9.8,       mcap: 5900,    vol: 280   },
+      { symbol: "ATOM", name: "Cosmos",        basePrice: 8.4,       mcap: 3200,    vol: 190   },
+      { symbol: "XRP",  name: "XRP",           basePrice: 0.62,      mcap: 34000,   vol: 2900  },
+      { symbol: "DOGE", name: "Dogecoin",      basePrice: 0.184,     mcap: 26000,   vol: 1400  },
+      { symbol: "SHIB", name: "Shiba Inu",     basePrice: 0.0000245, mcap: 14400,   vol: 820   },
+      { symbol: "LTC",  name: "Litecoin",      basePrice: 82,        mcap: 6100,    vol: 380   },
+      { symbol: "BCH",  name: "Bitcoin Cash",  basePrice: 390,       mcap: 7700,    vol: 320   },
+      { symbol: "XLM",  name: "Stellar",       basePrice: 0.11,      mcap: 3200,    vol: 210   },
+      { symbol: "ALGO", name: "Algorand",      basePrice: 0.19,      mcap: 1600,    vol: 140   },
+      { symbol: "VET",  name: "VeChain",       basePrice: 0.028,     mcap: 2000,    vol: 180   },
+      { symbol: "FIL",  name: "Filecoin",      basePrice: 5.8,       mcap: 3100,    vol: 220   },
+    ];
+
+    const assets = ASSET_DATA.map((a, i) => {
+      const change24h = rng(i, -8, 8);
+      const priceVariation = 1 + rng(i + 100, -0.02, 0.02);
+      const price = a.basePrice * priceVariation;
+      const high24h = price * (1 + Math.abs(rng(i + 200, 0.005, 0.04)));
+      const low24h = price * (1 - Math.abs(rng(i + 300, 0.005, 0.04)));
+      const sparkline: number[] = [];
+      let sp = price * (1 - change24h / 100);
+      for (let j = 0; j < 7; j++) {
+        sp = sp * (1 + rng(i * 7 + j + 1000, -0.015, 0.015));
+        sparkline.push(Math.round(sp * 10000) / 10000);
+      }
+      sparkline.push(Math.round(price * 10000) / 10000);
+      return {
+        symbol: a.symbol,
+        name: a.name,
+        price: Math.round(price * 10000) / 10000,
+        change24h: Math.round(change24h * 100) / 100,
+        high24h: Math.round(high24h * 10000) / 10000,
+        low24h: Math.round(low24h * 10000) / 10000,
+        volume24h: Math.round(a.vol * (0.9 + rng(i + 400, 0, 0.2))),
+        marketCap: Math.round(a.mcap * (0.98 + rng(i + 500, 0, 0.04))),
+        sparkline,
+        category: "Crypto",
+      };
+    });
+
+    res.json(assets);
+  });
+
+  // GET /api/trade/candles?symbol=BTC&timeframe=1h — 100 OHLC candles
+  app.get("/api/trade/candles", (req, res) => {
+    const symbol = String(req.query.symbol || "BTC");
+    const timeframe = String(req.query.timeframe || "1h");
+
+    const basePrices: Record<string, number> = {
+      BTC: 67000, ETH: 3400, BNB: 610, SOL: 187, ADA: 0.48, XRP: 0.62, DOGE: 0.184,
+    };
+    const basePrice = basePrices[symbol] || 67000;
+
+    const timeframeMs: Record<string, number> = {
+      "1m": 60000, "5m": 300000, "15m": 900000,
+      "1h": 3600000, "4h": 14400000, "1D": 86400000,
+    };
+    const intervalMs = timeframeMs[timeframe] || 3600000;
+    const now = Date.now();
+    const seed = Math.floor(now / 3600000);
+    const symbolSeed = symbol.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+
+    const candles = [];
+    let price = basePrice * 0.92; // start 8% lower
+    for (let i = 99; i >= 0; i--) {
+      const t = now - i * intervalMs;
+      const k = seed + symbolSeed + i;
+      const change = (Math.sin(k * 0.3) * 0.012 + Math.cos(k * 0.7) * 0.008) * basePrice;
+      const open = price;
+      const noise1 = Math.abs(Math.sin(k * 1.3) * 0.008) * basePrice;
+      const noise2 = Math.abs(Math.cos(k * 1.7) * 0.008) * basePrice;
+      const close = open + change;
+      const high = Math.max(open, close) + noise1;
+      const low = Math.min(open, close) - noise2;
+      const volume = Math.abs(Math.sin(k * 2.1) * 500 + 200);
+      candles.push({
+        time: t,
+        open: Math.round(open * 100) / 100,
+        high: Math.round(high * 100) / 100,
+        low: Math.round(low * 100) / 100,
+        close: Math.round(close * 100) / 100,
+        volume: Math.round(volume * 100) / 100,
+      });
+      price = close;
+    }
+
+    res.json(candles);
+  });
+
+  // GET /api/trade/depth?symbol=BTC — bid/ask depth data
+  app.get("/api/trade/depth", (req, res) => {
+    const symbol = String(req.query.symbol || "BTC");
+    const basePrices: Record<string, number> = {
+      BTC: 67000, ETH: 3400, BNB: 610, SOL: 187, ADA: 0.48, XRP: 0.62, DOGE: 0.184,
+    };
+    const mid = basePrices[symbol] || 67000;
+    const spread = mid * 0.0002;
+
+    const bids: { price: number; amount: number; total: number }[] = [];
+    const asks: { price: number; amount: number; total: number }[] = [];
+    let bidTotal = 0;
+    let askTotal = 0;
+
+    for (let i = 0; i < 50; i++) {
+      const bidPrice = mid - spread - i * mid * 0.0004;
+      const amount = Math.abs(Math.sin((i + 1) * 0.8) * 3 + 0.5);
+      bidTotal += amount;
+      bids.push({
+        price: Math.round(bidPrice * 100) / 100,
+        amount: Math.round(amount * 1000) / 1000,
+        total: Math.round(bidTotal * 1000) / 1000,
+      });
+
+      const askPrice = mid + spread + i * mid * 0.0004;
+      const askAmount = Math.abs(Math.cos((i + 1) * 0.9) * 2.5 + 0.8);
+      askTotal += askAmount;
+      asks.push({
+        price: Math.round(askPrice * 100) / 100,
+        amount: Math.round(askAmount * 1000) / 1000,
+        total: Math.round(askTotal * 1000) / 1000,
+      });
+    }
+
+    res.json({ bids, asks, mid: Math.round(mid * 100) / 100, spread: Math.round(spread * 100) / 100 });
+  });
+
+  // GET /api/trade/recent?symbol=BTC — last 30 trades
+  app.get("/api/trade/recent", (req, res) => {
+    const symbol = String(req.query.symbol || "BTC");
+    const basePrices: Record<string, number> = {
+      BTC: 67000, ETH: 3400, BNB: 610, SOL: 187, ADA: 0.48, XRP: 0.62, DOGE: 0.184,
+    };
+    const basePrice = basePrices[symbol] || 67000;
+    const now = Date.now();
+    const seed = Math.floor(now / 30000);
+
+    const trades = Array.from({ length: 30 }, (_, i) => {
+      const k = seed + i * 7 + 13;
+      const side = Math.sin(k) > 0 ? "BUY" : "SELL";
+      const priceDelta = Math.sin(k * 1.5) * basePrice * 0.001;
+      const price = basePrice + priceDelta;
+      const amount = Math.abs(Math.cos(k * 0.7) * 0.8 + 0.1);
+      return {
+        id: seed * 30 + i,
+        time: now - i * 2000 - Math.abs(Math.sin(k) * 5000),
+        price: Math.round(price * 100) / 100,
+        amount: Math.round(amount * 10000) / 10000,
+        side,
+      };
+    });
+
+    res.json(trades);
+  });
+
+  // GET /api/portfolio/equity-curve — 90-day equity curve
+  app.get("/api/portfolio/equity-curve", (_req, res) => {
+    const now = Date.now();
+    const DAY_MS = 86400000;
+    let value = 10000;
+    const curve = [];
+    for (let i = 89; i >= 0; i--) {
+      const t = now - i * DAY_MS;
+      const date = new Date(t).toISOString().split("T")[0];
+      const dailyReturn = 0.003 + Math.sin(i * 0.4) * 0.008 + Math.cos(i * 0.7) * 0.005;
+      const noise = Math.sin(i * 13.7) * 0.012;
+      value = value * (1 + dailyReturn + noise);
+      if (value < 8000) value = 8000;
+      curve.push({ date, value: Math.round(value) });
+    }
+    res.json({ curve, initialValue: 10000, currentValue: Math.round(value) });
+  });
+
+  // GET /api/portfolio/positions — open positions
+  app.get("/api/portfolio/positions", (_req, res) => {
+    const seed = Math.floor(Date.now() / (1000 * 60 * 10));
+    const rng = (n: number) => Math.abs(Math.sin(seed + n * 9301)) % 1;
+
+    const basePositions = [
+      { asset: "BTC",  direction: "LONG",  entryPrice: 64200, currentPrice: 67000, amount: 0.42 },
+      { asset: "ETH",  direction: "LONG",  entryPrice: 3180,  currentPrice: 3400,  amount: 2.8  },
+      { asset: "SOL",  direction: "SHORT", entryPrice: 198,   currentPrice: 187,   amount: 15   },
+      { asset: "BNB",  direction: "LONG",  entryPrice: 590,   currentPrice: 610,   amount: 3.5  },
+      { asset: "AVAX", direction: "LONG",  entryPrice: 36,    currentPrice: 38,    amount: 50   },
+    ];
+
+    const positions = basePositions.map((p, i) => {
+      const cpVariation = 1 + (rng(i) - 0.5) * 0.02;
+      const currentPrice = Math.round(p.currentPrice * cpVariation * 100) / 100;
+      const pnlPerUnit = p.direction === "LONG"
+        ? currentPrice - p.entryPrice
+        : p.entryPrice - currentPrice;
+      const pnl = Math.round(pnlPerUnit * p.amount * 100) / 100;
+      const pnlPct = Math.round((pnlPerUnit / p.entryPrice) * 10000) / 100;
+      return { ...p, currentPrice, pnl, pnlPct };
+    });
+
+    res.json(positions);
+  });
+
+  // GET /api/agents/feed — last 20 agent trades for live feed
+  app.get("/api/agents/feed", (_req, res) => {
+    const now = Date.now();
+    const seed = Math.floor(now / 15000); // refreshes every 15s
+    const agentList = [
+      { name: "Luna",   emoji: "🐱" },
+      { name: "Nova",   emoji: "🐈" },
+      { name: "Shadow", emoji: "🐈‍⬛" },
+      { name: "Blaze",  emoji: "🦁" },
+      { name: "Cipher", emoji: "🐯" },
+      { name: "Echo",   emoji: "🐻" },
+      { name: "Pixel",  emoji: "🐼" },
+      { name: "Nexus",  emoji: "🐨" },
+    ];
+    const assetList = ["BTC", "ETH", "SOL", "BNB", "AVAX", "MATIC", "LINK", "DOT"];
+    const basePricesF: Record<string, number> = {
+      BTC: 67000, ETH: 3400, SOL: 187, BNB: 610,
+      AVAX: 38, MATIC: 0.72, LINK: 14.5, DOT: 7.2,
+    };
+
+    const feed = Array.from({ length: 20 }, (_, i) => {
+      const k = seed + i * 7 + 3;
+      const agentIdx = Math.floor(Math.abs(Math.sin(k * 1.1)) * agentList.length) % agentList.length;
+      const assetIdx = Math.floor(Math.abs(Math.sin(k * 0.9)) * assetList.length) % assetList.length;
+      const agent = agentList[agentIdx];
+      const asset = assetList[assetIdx];
+      const side = Math.sin(k * 1.7) > 0 ? "BUY" : "SELL";
+      const basePrice = basePricesF[asset] || 100;
+      const price = Math.round(basePrice * (1 + Math.sin(k * 0.3) * 0.005) * 100) / 100;
+      const amount = Math.round((Math.abs(Math.cos(k * 1.3)) * 0.9 + 0.01) * 10000) / 10000;
+      const timeAgo = i * 45 + Math.floor(Math.abs(Math.sin(k)) * 30);
+      return {
+        id: seed * 20 + i,
+        agentName: agent.name,
+        agentEmoji: agent.emoji,
+        side,
+        asset,
+        price,
+        amount,
+        timeAgo,
+      };
+    });
+
+    res.json(feed);
+  });
 }

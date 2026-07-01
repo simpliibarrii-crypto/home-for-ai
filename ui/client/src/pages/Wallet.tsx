@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import {
   Lock, ShieldCheck, Eye, EyeOff, Copy, Check, AlertTriangle,
-  Cpu, ArrowUpRight, ArrowDownLeft, Fingerprint, Shield, Zap, RefreshCw
+  Cpu, ArrowUpRight, ArrowDownLeft, Fingerprint, Shield, Zap, RefreshCw,
+  TrendingUp, TrendingDown, Plus, Minus
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── BIP-39 word pool ─────────────────────────────────────────────────────────
-
 const BIP39_POOL = [
   "abandon","ability","able","about","above","absent","absorb","abstract",
   "absurd","abuse","access","accident","account","accuse","achieve","acid",
@@ -31,7 +32,6 @@ const BIP39_POOL = [
 function generateMnemonic(): string[] {
   const words: string[] = [];
   const pool = [...BIP39_POOL];
-  // Simple deterministic shuffle using a seed for variety
   const seed = Date.now() % pool.length;
   for (let i = 0; i < 12; i++) {
     const idx = (seed + i * 7 + i * i * 3) % pool.length;
@@ -41,12 +41,12 @@ function generateMnemonic(): string[] {
 }
 
 // ─── Holdings data ────────────────────────────────────────────────────────────
-
 interface Holding {
   symbol: string;
   name: string;
   balance: number;
-  priceCAD: number;
+  priceUSD: number;
+  avgBuyPrice: number;
   change24h: number;
   color: string;
   address: string;
@@ -54,625 +54,347 @@ interface Holding {
 }
 
 const HOLDINGS: Holding[] = [
-  {
-    symbol: "BTC", name: "Bitcoin", balance: 0.42814, priceCAD: 135240.00,
-    change24h: 2.14, color: "#F59E0B",
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    icon: "₿",
-  },
-  {
-    symbol: "ETH", name: "Ethereum", balance: 4.8120, priceCAD: 4680.00,
-    change24h: 1.87, color: "#6366F1",
-    address: "0x742d35Cc6634C0532925a3b8D4C9F5AC5f2a3E7f",
-    icon: "Ξ",
-  },
-  {
-    symbol: "SOL", name: "Solana", balance: 24.500, priceCAD: 257.80,
-    change24h: 4.21, color: "#06B6D4",
-    address: "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV",
-    icon: "◎",
-  },
-  {
-    symbol: "USDC", name: "USD Coin", balance: 2500.00, priceCAD: 1.362,
-    change24h: 0.01, color: "#10B981",
-    address: "0x742d35Cc6634C0532925a3b8D4C9F5AC5f2a3E7f",
-    icon: "$",
-  },
+  { symbol: "BTC",  name: "Bitcoin",    balance: 0.42814,   priceUSD: 67000,  avgBuyPrice: 64200,  change24h: 2.14,  color: "#F59E0B",  address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", icon: "₿" },
+  { symbol: "ETH",  name: "Ethereum",   balance: 4.8120,    priceUSD: 3412,   avgBuyPrice: 3180,   change24h: 1.87,  color: "#6366F1",  address: "0x742d35Cc6634C0532925a3b8D4C9F5AC5f2a3E7f", icon: "Ξ" },
+  { symbol: "SOL",  name: "Solana",     balance: 24.500,    priceUSD: 187,    avgBuyPrice: 198,    change24h: 4.21,  color: "#06B6D4",  address: "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV", icon: "◎" },
+  { symbol: "BNB",  name: "BNB",        balance: 3.50,      priceUSD: 610,    avgBuyPrice: 590,    change24h: 0.88,  color: "#F59E0B",  address: "bnb1grpf0955h0ykzq3ar5nmum7y6gdfl6lxfn46h2",   icon: "B" },
+  { symbol: "USDT", name: "Tether",     balance: 1850.00,   priceUSD: 1.000,  avgBuyPrice: 1.000,  change24h: 0.01,  color: "#10B981",  address: "0x742d35Cc6634C0532925a3b8D4C9F5AC5f2a3E7f", icon: "₮" },
+  { symbol: "USDC", name: "USD Coin",   balance: 2500.00,   priceUSD: 1.000,  avgBuyPrice: 1.000,  change24h: 0.01,  color: "#3B82F6",  address: "0x742d35Cc6634C0532925a3b8D4C9F5AC5f2a3E7f", icon: "$" },
 ];
 
-// ─── Transaction history ──────────────────────────────────────────────────────
-
-const TRANSACTIONS = [
-  { id: 1, type: "received", symbol: "BTC", amount: 0.05, amountCAD: 6762.00, from: "bc1q8c4fje...d3xq", to: "bc1qxy2...wlh", time: "2026-06-29 14:22", confirmations: 6, hash: "a3f8d9...12bc" },
-  { id: 2, type: "sent", symbol: "ETH", amount: 1.5, amountCAD: 7020.00, from: "0x742d...E7f", to: "0xd8dA...c2bA", time: "2026-06-28 09:41", confirmations: 24, hash: "7e4c12...9f1a" },
-  { id: 3, type: "received", symbol: "USDC", amount: 1000.00, amountCAD: 1362.00, from: "0x3a8f...b4c1", to: "0x742d...E7f", time: "2026-06-27 18:05", confirmations: 18, hash: "2d9a77...4e3f" },
-  { id: 4, type: "sent", symbol: "SOL", amount: 5.0, amountCAD: 1289.00, from: "7EcDhS...tV", to: "DxBu4f...kL8n", time: "2026-06-26 11:30", confirmations: 32, hash: "b5f3e1...78cd" },
-  { id: 5, type: "received", symbol: "BTC", amount: 0.02, amountCAD: 2704.80, from: "1BvBMSEY...Gm", to: "bc1qxy2...wlh", time: "2026-06-25 15:12", confirmations: 42, hash: "c7a2d4...91ef" },
-  { id: 6, type: "received", symbol: "ETH", amount: 2.0, amountCAD: 9360.00, from: "0x8fA5...9bD3", to: "0x742d...E7f", time: "2026-06-24 08:47", confirmations: 58, hash: "5e1b97...33ac" },
-  { id: 7, type: "sent", symbol: "USDC", amount: 500.00, amountCAD: 681.00, from: "0x742d...E7f", to: "0x1dF8...cA22", time: "2026-06-23 20:33", confirmations: 72, hash: "9c4f28...67bd" },
-  { id: 8, type: "received", symbol: "SOL", amount: 10.0, amountCAD: 2578.00, from: "BJ1q4k...M3nX", to: "7EcDhS...tV", time: "2026-06-22 13:18", confirmations: 88, hash: "1a7e53...44f2" },
-  { id: 9, type: "sent", symbol: "BTC", amount: 0.01, amountCAD: 1352.40, from: "bc1qxy2...wlh", to: "bc1q7l8...9xp", time: "2026-06-21 09:55", confirmations: 104, hash: "e8d341...22ca" },
-  { id: 10, type: "received", symbol: "USDC", amount: 2000.00, amountCAD: 2724.00, from: "0x6a9c...7d45", to: "0x742d...E7f", time: "2026-06-20 16:40", confirmations: 120, hash: "4f2b89...15df" },
+// ─── Recent Transactions ─────────────────────────────────────────────────────
+const RECENT_TXS = [
+  { id: 1, type: "receive", asset: "BTC",  amount: 0.05,    valueUSD: 3350,  time: "2 hours ago",   hash: "bc1q...4h7a" },
+  { id: 2, type: "send",    asset: "ETH",  amount: 0.8,     valueUSD: 2729,  time: "5 hours ago",   hash: "0x3a...b2f1" },
+  { id: 3, type: "receive", asset: "USDT", amount: 500,     valueUSD: 500,   time: "1 day ago",     hash: "0x8f...c4e2" },
+  { id: 4, type: "send",    asset: "SOL",  amount: 5,       valueUSD: 935,   time: "2 days ago",    hash: "7Ec...LtV" },
+  { id: 5, type: "receive", asset: "BNB",  amount: 1.5,     valueUSD: 915,   time: "3 days ago",    hash: "bnb1...h2" },
+  { id: 6, type: "send",    asset: "BTC",  amount: 0.01,    valueUSD: 670,   time: "5 days ago",    hash: "bc1q...m3k9" },
 ];
 
-// ─── QR Code SVG (visual mock) ────────────────────────────────────────────────
-
-function QRCodeSVG({ address }: { address: string }) {
-  // Generate a deterministic grid pattern based on address
-  const cells: boolean[][] = [];
-  for (let row = 0; row < 21; row++) {
-    cells[row] = [];
-    for (let col = 0; col < 21; col++) {
-      // Finder patterns at corners
-      const inFinder =
-        (row < 7 && col < 7) ||
-        (row < 7 && col > 13) ||
-        (row > 13 && col < 7);
-      if (inFinder) {
-        const r = row % 7, c = col % 7;
-        cells[row][col] =
-          r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4);
-      } else {
-        const charCode = address.charCodeAt((row * 21 + col) % address.length) || 0;
-        cells[row][col] = (charCode + row * col) % 3 !== 0;
-      }
-    }
-  }
-
-  return (
-    <svg viewBox="0 0 21 21" width={128} height={128} className="rounded-lg" style={{ imageRendering: "pixelated" }}>
-      <rect width="21" height="21" fill="white" />
-      {cells.map((row, r) =>
-        row.map((filled, c) =>
-          filled ? <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="black" /> : null
-        )
-      )}
-    </svg>
-  );
-}
-
-// ─── Send Modal ───────────────────────────────────────────────────────────────
-
-function SendModal({
-  open, onClose, holding
-}: {
-  open: boolean; onClose: () => void; holding: Holding | null;
-}) {
-  const { toast } = useToast();
-  const [step, setStep] = useState<"form" | "pin">("form");
-  const [address, setAddress] = useState("");
-  const [amount, setAmount] = useState("");
-  const [pin, setPin] = useState("");
-  const [addressError, setAddressError] = useState("");
-
-  const validateAddress = (addr: string) => {
-    if (!addr) return "Address is required";
-    if (holding?.symbol === "BTC") {
-      if (!addr.startsWith("bc1") && !addr.startsWith("1") && !addr.startsWith("3")) {
-        return "Invalid Bitcoin address (must start with bc1, 1, or 3)";
-      }
-    } else if (holding?.symbol === "ETH" || holding?.symbol === "USDC") {
-      if (!addr.startsWith("0x") || addr.length !== 42) {
-        return "Invalid Ethereum address (0x + 40 hex chars)";
-      }
-    }
-    return "";
-  };
-
-  const handleReview = () => {
-    const err = validateAddress(address);
-    if (err) { setAddressError(err); return; }
-    if (!amount || parseFloat(amount) <= 0) return;
-    setStep("pin");
-  };
-
-  const handleConfirm = () => {
-    if (pin.length !== 6) {
-      toast({ title: "Invalid PIN", description: "Enter your 6-digit PIN.", variant: "destructive" });
-      return;
-    }
-    toast({
-      title: `Transaction submitted`,
-      description: `${amount} ${holding?.symbol} sent to ${address.slice(0, 10)}...`,
-    });
-    onClose();
-    setStep("form");
-    setAddress(""); setAmount(""); setPin("");
-  };
-
-  const gasEstimate = holding?.symbol === "BTC" ? "~0.0001 BTC ($13.52)" :
-    holding?.symbol === "ETH" ? "~0.002 ETH ($9.36)" :
-    holding?.symbol === "USDC" ? "~$1.20 USDC" : "~0.0001 SOL ($0.03)";
-
-  if (!holding) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={v => { if (!v) { onClose(); setStep("form"); } }}>
-      <DialogContent className="bg-[#050508] border-white/[0.1] text-white max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="font-display text-base">
-            Send {holding.symbol}
-          </DialogTitle>
-          <DialogDescription className="text-white/40 text-xs">
-            {step === "form" ? "Enter recipient details" : "Confirm with your 6-digit PIN"}
-          </DialogDescription>
-        </DialogHeader>
-
-        {step === "form" ? (
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] text-white/40 mb-1 block">Recipient Address</label>
-              <Input
-                value={address}
-                onChange={e => { setAddress(e.target.value); setAddressError(""); }}
-                placeholder={holding.symbol === "BTC" ? "bc1q..." : "0x..."}
-                className="bg-white/[0.04] border-white/[0.08] text-white text-xs font-mono h-10"
-              />
-              {addressError && <p className="text-[10px] text-red-400 mt-1">{addressError}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-white/40 mb-1 block">Amount ({holding.symbol})</label>
-              <Input
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
-                type="number"
-                min="0"
-                className="bg-white/[0.04] border-white/[0.08] text-white font-mono text-sm h-10"
-              />
-              <p className="text-[10px] text-white/30 mt-1">
-                Balance: {holding.balance.toFixed(4)} {holding.symbol}
-              </p>
-            </div>
-            <div className="glass rounded-xl p-3 text-xs space-y-1.5">
-              <div className="flex justify-between"><span className="text-white/40">Network Fee</span><span className="font-mono text-white/60">{gasEstimate}</span></div>
-              {amount && <div className="flex justify-between"><span className="text-white/40">Total CAD</span><span className="font-mono text-[#F59E0B]">≈ ${(parseFloat(amount || "0") * holding.priceCAD).toFixed(2)}</span></div>}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 border-white/[0.1] text-white/60" onClick={onClose}>Cancel</Button>
-              <Button className="flex-1 bg-[#4F46E5] hover:bg-[#4338CA]" onClick={handleReview}>Review</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="glass rounded-xl p-4 space-y-2 text-xs">
-              <div className="flex justify-between"><span className="text-white/40">To</span><span className="font-mono text-white/70 truncate max-w-[180px]">{address}</span></div>
-              <div className="flex justify-between"><span className="text-white/40">Amount</span><span className="font-mono text-white font-semibold">{amount} {holding.symbol}</span></div>
-              <div className="flex justify-between"><span className="text-white/40">CAD Value</span><span className="font-mono text-[#F59E0B]">≈ ${(parseFloat(amount || "0") * holding.priceCAD).toFixed(2)}</span></div>
-            </div>
-            <div>
-              <label className="text-[10px] text-white/40 mb-1 block">6-Digit PIN</label>
-              <Input
-                value={pin}
-                onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="••••••"
-                type="password"
-                maxLength={6}
-                className="bg-white/[0.04] border-white/[0.08] text-white font-mono text-xl h-12 text-center tracking-widest"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 border-white/[0.1] text-white/60" onClick={() => setStep("form")}>Back</Button>
-              <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={handleConfirm}>Confirm Send</Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Receive Modal ────────────────────────────────────────────────────────────
-
-function ReceiveModal({ open, onClose, holding }: { open: boolean; onClose: () => void; holding: Holding | null }) {
-  const { toast } = useToast();
+// ─── Deposit/Withdraw Modals ─────────────────────────────────────────────────
+function DepositModal({ holding, onClose }: { holding: Holding; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    if (holding) {
-      navigator.clipboard.writeText(holding.address).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Address copied!", description: "Wallet address copied to clipboard." });
-    }
-  };
-
-  if (!holding) return null;
+  function copyAddress() {
+    navigator.clipboard.writeText(holding.address).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="bg-[#050508] border-white/[0.1] text-white max-w-sm">
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="bg-[#0c0f1a] border-white/[0.08] text-white max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-display text-base">Receive {holding.symbol}</DialogTitle>
-          <DialogDescription className="text-white/40 text-xs">
-            Send {holding.symbol} to this address
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <span style={{ color: holding.color }}>{holding.icon}</span>
+            Deposit {holding.symbol}
+          </DialogTitle>
+          <DialogDescription className="text-white/40">Send {holding.symbol} to the address below</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col items-center gap-4">
-          <div className="p-3 bg-white rounded-2xl shadow-lg">
-            <QRCodeSVG address={holding.address} />
+        <div className="space-y-4">
+          <div className="bg-white/[0.04] rounded-xl p-4 text-center">
+            <div className="w-32 h-32 mx-auto bg-white rounded-xl flex items-center justify-center mb-3">
+              <div className="text-[10px] text-black font-mono leading-tight px-2 text-center break-all opacity-60">{holding.address.slice(0, 20)}…</div>
+            </div>
+            <p className="text-[10px] text-white/40 mb-2">Scan QR or copy address</p>
           </div>
-          <div className="w-full glass rounded-xl p-3">
-            <p className="text-[10px] text-white/40 mb-1">Your {holding.symbol} Address</p>
-            <p className="font-mono text-xs text-white/80 break-all leading-relaxed">{holding.address}</p>
+          <div className="flex items-center gap-2 bg-white/[0.04] rounded-xl px-3 py-2">
+            <code className="flex-1 font-mono text-[10px] text-white/60 truncate">{holding.address}</code>
+            <button onClick={copyAddress} className="flex-shrink-0 text-white/40 hover:text-[#4F46E5] transition-colors">
+              {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+            </button>
           </div>
-          <Button onClick={handleCopy} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] gap-2">
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? "Copied!" : "Copy Address"}
-          </Button>
-          <p className="text-[10px] text-white/25 text-center">
-            Only send {holding.symbol} to this address. Sending other assets may result in permanent loss.
-          </p>
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+            <div className="flex gap-2">
+              <AlertTriangle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-400/80">Only send {holding.symbol} to this address. Sending other assets may result in permanent loss.</p>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ─── Setup flow ───────────────────────────────────────────────────────────────
-
-function WalletSetup({ onComplete }: { onComplete: () => void }) {
-  const [mnemonic] = useState(() => generateMnemonic());
+function WithdrawModalLocal({ holding, onClose }: { holding: Holding; onClose: () => void }) {
+  const [address, setAddress] = useState("");
+  const [amount, setAmount] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-
-  return (
-    <div className="max-w-md mx-auto p-6 space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#4F46E5]/15 border border-[#4F46E5]/25 flex items-center justify-center mx-auto mb-4">
-          <Lock size={28} className="text-[#4F46E5]" />
-        </div>
-        <h1 className="font-display font-bold text-xl text-white">Create Your Wallet</h1>
-        <p className="text-sm text-white/40 mt-1">A new self-custodial crypto wallet</p>
-      </div>
-
-      {/* Security badges */}
-      <div className="flex flex-wrap justify-center gap-2">
-        {["AES-256-GCM", "BIP-39", "BIP-44 HD", "Hardware Ready"].map(b => (
-          <Badge key={b} className="text-[10px] bg-[#4F46E5]/10 text-[#818CF8] border-[#4F46E5]/25">
-            {b}
-          </Badge>
-        ))}
-      </div>
-
-      {/* Mnemonic phrase */}
-      <div className="glass rounded-2xl p-5 border border-[#F59E0B]/20">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-[#F59E0B] flex items-center gap-1.5">
-            <AlertTriangle size={12} />
-            12-Word Recovery Phrase
-          </p>
-          <button onClick={() => setRevealed(v => !v)} className="text-[10px] text-white/30 flex items-center gap-1">
-            {revealed ? <EyeOff size={11} /> : <Eye size={11} />}
-            {revealed ? "Hide" : "Reveal"}
-          </button>
-        </div>
-
-        {revealed ? (
-          <div className="grid grid-cols-3 gap-2">
-            {mnemonic.map((word, i) => (
-              <div key={i} className="bg-white/[0.04] rounded-lg px-2 py-1.5 text-center">
-                <span className="text-[9px] text-white/25 mr-1">{i + 1}.</span>
-                <span className="text-xs font-mono text-white/90">{word}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {mnemonic.map((_, i) => (
-              <div key={i} className="bg-white/[0.04] rounded-lg px-2 py-1.5 text-center blur-sm">
-                <span className="text-[9px] text-white/25 mr-1">{i + 1}.</span>
-                <span className="text-xs font-mono text-white/90">••••••</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-4 p-3 bg-[#F59E0B]/5 border border-[#F59E0B]/15 rounded-xl text-[11px] text-[#F59E0B]/80 leading-relaxed">
-          ⚠ Write this down. Store it offline in a secure location. Never share it with anyone. We cannot recover it if lost.
-        </div>
-      </div>
-
-      {/* Confirm */}
-      <label className="flex items-start gap-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={confirmed}
-          onChange={e => setConfirmed(e.target.checked)}
-          className="mt-0.5 w-4 h-4 rounded accent-[#4F46E5]"
-        />
-        <span className="text-xs text-white/50 leading-relaxed">
-          I have written down my recovery phrase and understand that losing it means permanent loss of access to my funds.
-        </span>
-      </label>
-
-      <Button
-        disabled={!confirmed}
-        onClick={onComplete}
-        className="w-full bg-[#4F46E5] hover:bg-[#4338CA] disabled:opacity-30 font-semibold"
-      >
-        Create Wallet
-      </Button>
-    </div>
-  );
-}
-
-// ─── Main Wallet Page ─────────────────────────────────────────────────────────
-
-export default function WalletPage() {
   const { toast } = useToast();
-  const [walletCreated, setWalletCreated] = useState(false);
-  const [sendModal, setSendModal] = useState<Holding | null>(null);
-  const [receiveModal, setReceiveModal] = useState<Holding | null>(null);
-  const [showFreezeDialog, setShowFreezeDialog] = useState(false);
-  const [frozen, setFrozen] = useState(false);
 
-  const totalCAD = useMemo(() =>
-    HOLDINGS.reduce((sum, h) => sum + h.balance * h.priceCAD, 0),
-    []
-  );
-  const totalUSD = totalCAD / 1.362; // approx CAD/USD
-
-  if (!walletCreated) {
-    return <WalletSetup onComplete={() => setWalletCreated(true)} />;
+  function submit() {
+    if (!address || !amount) return;
+    toast({ title: "Withdrawal initiated", description: `${amount} ${holding.symbol} sent to ${address.slice(0, 12)}…` });
+    onClose();
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-display font-bold text-xl text-white/90">Crypto Wallet</h1>
-          <p className="text-sm text-white/35 mt-0.5">Self-custodial · BIP-44 HD</p>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-emerald-400 border border-emerald-500/20 rounded-full px-3 py-1 bg-emerald-500/5">
-          <Lock size={10} />
-          AES-256-GCM encrypted · BIP-39 · Hardware key ready
-        </div>
-      </div>
-
-      {/* Portfolio value */}
-      <div className="glass rounded-2xl p-6 text-center relative overflow-hidden" style={{
-        background: "linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(6,182,212,0.06) 100%)"
-      }}>
-        <div className="absolute inset-0 bg-gradient-to-br from-[#4F46E5]/5 to-transparent" />
-        <p className="text-[10px] text-white/40 mb-1 uppercase tracking-wider">Total Portfolio Value</p>
-        <p className="font-mono text-4xl font-bold text-white">${totalCAD.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        <p className="text-sm text-white/40 mt-1">≈ USD ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        <div className="flex justify-center gap-4 mt-4">
-          <div className="text-center">
-            <p className="text-[10px] text-white/30">24h Change</p>
-            <p className="font-mono text-sm font-semibold text-emerald-400">+$1,842.40 (+2.1%)</p>
-          </div>
-          <div className="w-px bg-white/[0.08]" />
-          <div className="text-center">
-            <p className="text-[10px] text-white/30">Assets</p>
-            <p className="font-mono text-sm font-semibold text-white/80">{HOLDINGS.length} coins</p>
-          </div>
-          <div className="w-px bg-white/[0.08]" />
-          <div className="text-center">
-            <p className="text-[10px] text-white/30">Network</p>
-            <p className="font-mono text-sm font-semibold text-[#06B6D4]">Multi-chain</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Holdings */}
-        <div className="lg:col-span-2 glass rounded-2xl overflow-hidden">
-          <div className="flex items-center px-5 py-4 border-b border-white/[0.05]">
-            <h3 className="font-display font-semibold text-sm text-white/70">Holdings</h3>
-          </div>
-          <div className="divide-y divide-white/[0.04]">
-            {HOLDINGS.map(holding => {
-              const valueCAD = holding.balance * holding.priceCAD;
-              const isUp = holding.change24h >= 0;
-              return (
-                <div key={holding.symbol} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0"
-                    style={{ background: `${holding.color}20`, color: holding.color }}
-                  >
-                    {holding.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm text-white/90">{holding.name}</p>
-                    <p className="font-mono text-[10px] text-white/35">{holding.balance.toFixed(4)} {holding.symbol}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono text-sm font-semibold text-white/80">
-                      ${valueCAD.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p className={`font-mono text-[10px] font-semibold ${isUp ? "text-emerald-400" : "text-red-400"}`}>
-                      {isUp ? "+" : ""}{holding.change24h}%
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Button
-                      size="sm"
-                      onClick={() => setSendModal(holding)}
-                      className="h-7 text-[10px] bg-white/[0.06] hover:bg-white/[0.1] text-white/70 border-white/[0.08] gap-1"
-                      variant="outline"
-                    >
-                      <ArrowUpRight size={10} />
-                      Send
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => setReceiveModal(holding)}
-                      className="h-7 text-[10px] bg-[#4F46E5]/15 hover:bg-[#4F46E5]/25 text-[#818CF8] border-[#4F46E5]/25 gap-1"
-                      variant="outline"
-                    >
-                      <ArrowDownLeft size={10} />
-                      Receive
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Security panel */}
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="bg-[#0c0f1a] border-white/[0.08] text-white max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span style={{ color: holding.color }}>{holding.icon}</span>
+            Withdraw {holding.symbol}
+          </DialogTitle>
+          <DialogDescription className="text-white/40">Available: {holding.balance} {holding.symbol}</DialogDescription>
+        </DialogHeader>
         <div className="space-y-3">
-          <h3 className="font-display font-semibold text-sm text-white/60">Security</h3>
-
-          {[
-            {
-              icon: ShieldCheck, label: "2FA Authentication", value: "Enabled",
-              color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20"
-            },
-            {
-              icon: Fingerprint, label: "Biometric Auth", value: "Enabled",
-              color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20"
-            },
-          ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className="glass rounded-xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Icon size={14} className={color} />
-                <span className="text-xs text-white/60">{label}</span>
-              </div>
-              <Badge className={`text-[10px] ${bg} ${color}`}>{value}</Badge>
+          <div>
+            <label className="text-[10px] text-white/40 mb-1 block">Recipient Address</label>
+            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder={holding.address.slice(0, 20) + "…"} className="bg-white/[0.04] border-white/[0.08] text-white font-mono text-xs h-9" />
+          </div>
+          <div>
+            <label className="text-[10px] text-white/40 mb-1 block">Amount</label>
+            <div className="relative">
+              <Input value={amount} onChange={e => setAmount(e.target.value)} type="number" min="0" placeholder="0.00" className="bg-white/[0.04] border-white/[0.08] text-white font-mono text-sm h-9 pr-16" />
+              <button onClick={() => setAmount(String(holding.balance))} className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#4F46E5] hover:text-[#818CF8] font-semibold">MAX</button>
             </div>
-          ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="confirm-withdraw" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="accent-[#4F46E5]" />
+            <label htmlFor="confirm-withdraw" className="text-[10px] text-white/50 cursor-pointer">I confirm this withdrawal is correct and irreversible</label>
+          </div>
+          <Button onClick={submit} disabled={!address || !amount || !confirmed} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold disabled:opacity-30">
+            Withdraw {holding.symbol}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-          {/* Hardware key */}
-          <div className="glass rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Cpu size={14} className="text-[#06B6D4]" />
-                <span className="text-xs text-white/60">Hardware Key</span>
-              </div>
+// ─── Wallet Page ──────────────────────────────────────────────────────────────
+export default function WalletPage() {
+  const [showBalance, setShowBalance] = useState(true);
+  const [depositModal, setDepositModal] = useState<Holding | null>(null);
+  const [withdrawModal, setWithdrawModal] = useState<Holding | null>(null);
+  const [seedPhraseOpen, setSeedPhraseOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [seedWords] = useState<string[]>(() => generateMnemonic());
+  const [seedRevealed, setSeedRevealed] = useState(false);
+  const { toast } = useToast();
+
+  const totalUSD = useMemo(() => HOLDINGS.reduce((s, h) => s + h.balance * h.priceUSD, 0), []);
+  const totalBTC = totalUSD / 67000;
+
+  // 24h portfolio change
+  const change24h = useMemo(() => HOLDINGS.reduce((s, h) => s + (h.balance * h.priceUSD * h.change24h / 100), 0), []);
+  const change24hPct = (change24h / (totalUSD - change24h)) * 100;
+
+  return (
+    <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
+      {depositModal && <DepositModal holding={depositModal} onClose={() => setDepositModal(null)} />}
+      {withdrawModal && <WithdrawModalLocal holding={withdrawModal} onClose={() => setWithdrawModal(null)} />}
+
+      {/* Page Header */}
+      <div>
+        <h1 className="font-display font-bold text-xl text-white/90">Wallet</h1>
+        <p className="text-sm text-white/35 mt-0.5">Your crypto balances</p>
+      </div>
+
+      {/* Total Balance Card */}
+      <div className="glass rounded-2xl p-6 border border-[#4F46E5]/20 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#4F46E5]/5 blur-3xl pointer-events-none" />
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs text-white/40 uppercase tracking-widest font-mono">Total Balance</p>
+              <button onClick={() => setShowBalance(b => !b)} className="text-white/30 hover:text-white/60 transition-colors">
+                {showBalance ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
             </div>
-            <Button
-              onClick={() => toast({ title: "Hardware wallet detected", description: "Ledger Nano X connected via USB." })}
-              className="w-full h-7 text-[10px] bg-[#06B6D4]/10 hover:bg-[#06B6D4]/20 text-[#06B6D4] border-[#06B6D4]/25 gap-1"
-              variant="outline"
+            {showBalance ? (
+              <>
+                <div className="font-mono font-bold text-4xl text-white">${totalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="font-mono text-sm text-white/40 mt-1">≈ {totalBTC.toFixed(5)} BTC</div>
+              </>
+            ) : (
+              <div className="font-mono font-bold text-4xl text-white">••••••••</div>
+            )}
+            <div className={`flex items-center gap-1 mt-2 text-sm font-mono ${change24h >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              {change24h >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              <span>{change24h >= 0 ? "+" : ""}${Math.abs(change24h).toFixed(2)} ({change24hPct >= 0 ? "+" : ""}{change24hPct.toFixed(2)}%)</span>
+              <span className="text-white/30 text-xs ml-1">24h</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => HOLDINGS[0] && setDepositModal(HOLDINGS[0])}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4F46E5] text-white text-xs font-semibold hover:bg-[#4338CA] transition-all"
+              >
+                <ArrowDownLeft size={14} /> Deposit
+              </button>
+              <button
+                onClick={() => HOLDINGS[0] && setWithdrawModal(HOLDINGS[0])}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/[0.1] text-white/60 text-xs font-semibold hover:text-white hover:border-white/20 transition-all"
+              >
+                <ArrowUpRight size={14} /> Withdraw
+              </button>
+            </div>
+            <button
+              onClick={() => setSeedPhraseOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-amber-500/30 text-amber-400/70 text-xs font-semibold hover:text-amber-400 hover:border-amber-500/50 transition-all"
             >
-              <Zap size={10} />
-              Connect Ledger / Trezor
-            </Button>
+              <Lock size={12} /> Backup Wallet
+            </button>
           </div>
+        </div>
 
-          {/* Backup */}
-          <div className="glass rounded-xl p-3 space-y-1">
-            <div className="flex items-center gap-2">
-              <RefreshCw size={13} className="text-[#4F46E5]" />
-              <span className="text-xs text-white/60">Backup</span>
-            </div>
-            <p className="text-[10px] text-white/35">Encrypted backup created · Shamir Secret Sharing ready</p>
-          </div>
-
-          {/* Anti-phishing code */}
-          <div className="glass rounded-xl p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Shield size={13} className="text-[#F59E0B]" />
-              <span className="text-xs text-white/60">Anti-Phishing Code</span>
-            </div>
-            <p className="font-mono text-sm font-bold text-[#F59E0B] tracking-widest">SAPPHIRE-7734</p>
-            <p className="text-[9px] text-white/25 mt-0.5">This code appears on every login</p>
-          </div>
-
-          {/* Emergency freeze */}
-          {frozen ? (
-            <div className="glass rounded-xl p-3 border border-red-500/30">
-              <p className="text-xs text-red-400 font-semibold flex items-center gap-1.5">
-                <AlertTriangle size={12} />
-                Wallet Frozen
-              </p>
-              <p className="text-[10px] text-white/30 mt-1">All transactions blocked. Contact support to unfreeze.</p>
-              <Button onClick={() => setFrozen(false)} variant="outline" className="w-full h-7 text-[10px] mt-2 border-white/[0.1] text-white/40">
-                Unfreeze Wallet
-              </Button>
-            </div>
-          ) : (
-            <Button
-              onClick={() => setShowFreezeDialog(true)}
-              variant="destructive"
-              className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25"
-            >
-              <AlertTriangle size={12} className="mr-1.5" />
-              Emergency Freeze
-            </Button>
-          )}
+        {/* Security badges */}
+        <div className="flex items-center gap-3 mt-5 pt-4 border-t border-white/[0.05] flex-wrap">
+          <span className="footer-badge"><ShieldCheck size={10} /> AES-256 Encrypted</span>
+          <span className="footer-badge"><Fingerprint size={10} /> Non-custodial</span>
+          <span className="footer-badge"><Shield size={10} /> SOC 2 Type II</span>
         </div>
       </div>
 
-      {/* Transaction History */}
+      {/* Asset Table */}
       <div className="glass rounded-2xl overflow-hidden">
-        <div className="flex items-center px-5 py-4 border-b border-white/[0.05]">
-          <h3 className="font-display font-semibold text-sm text-white/70">Transaction History</h3>
-          <span className="ml-auto text-[10px] text-white/30">{TRANSACTIONS.length} transactions</span>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.05]">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Assets</p>
+          <span className="text-[10px] text-white/30">{HOLDINGS.length} coins</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs min-w-[700px]">
             <thead>
-              <tr className="border-b border-white/[0.05]">
-                {["Type", "Asset", "Amount", "CAD Value", "Address", "Time", "Confirms"].map(h => (
-                  <th key={h} className="px-4 py-2 text-left font-semibold text-white/30 text-[10px] uppercase tracking-wider">{h}</th>
-                ))}
+              <tr className="border-b border-white/[0.04] text-[10px] text-white/30 uppercase tracking-wide">
+                <th className="px-5 py-2 text-left">Coin</th>
+                <th className="px-3 py-2 text-right">Balance</th>
+                <th className="px-3 py-2 text-right">Avg Buy</th>
+                <th className="px-3 py-2 text-right">Current Price</th>
+                <th className="px-3 py-2 text-right">Value (USD)</th>
+                <th className="px-3 py-2 text-right">P&L</th>
+                <th className="px-3 py-2 text-right">P&L %</th>
+                <th className="px-5 py-2 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {TRANSACTIONS.map(tx => (
-                <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-3">
-                    <Badge className={`text-[9px] gap-1 ${
-                      tx.type === "received"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-red-500/10 text-red-400 border-red-500/20"
-                    }`}>
-                      {tx.type === "received" ? <ArrowDownLeft size={8} /> : <ArrowUpRight size={8} />}
-                      {tx.type}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 font-mono font-semibold text-white/80">{tx.symbol}</td>
-                  <td className="px-4 py-3 font-mono text-white/70">{tx.amount}</td>
-                  <td className="px-4 py-3 font-mono text-[#F59E0B]">${tx.amountCAD.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-mono text-white/35 text-[10px]">
-                    {tx.type === "received" ? tx.from : tx.to}
-                  </td>
-                  <td className="px-4 py-3 text-white/30 text-[10px] whitespace-nowrap">{tx.time}</td>
-                  <td className="px-4 py-3">
-                    <Badge className="text-[9px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                      ✓ {tx.confirmations}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
+            <tbody>
+              {HOLDINGS.map((h) => {
+                const valueUSD = h.balance * h.priceUSD;
+                const costBasis = h.balance * h.avgBuyPrice;
+                const pnl = valueUSD - costBasis;
+                const pnlPct = ((h.priceUSD - h.avgBuyPrice) / h.avgBuyPrice) * 100;
+                const isPnlPos = pnl >= 0;
+                return (
+                  <tr key={h.symbol} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background: h.color + "20", border: `1px solid ${h.color}40`, color: h.color }}>
+                          {h.icon}
+                        </div>
+                        <div>
+                          <div className="font-mono font-semibold text-white/90">{h.symbol}</div>
+                          <div className="text-[9px] text-white/30">{h.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono text-white/70">{h.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</td>
+                    <td className="px-3 py-3 text-right font-mono text-white/40">${h.avgBuyPrice >= 1 ? h.avgBuyPrice.toLocaleString() : h.avgBuyPrice.toFixed(4)}</td>
+                    <td className="px-3 py-3 text-right font-mono text-white/70">${h.priceUSD >= 1 ? h.priceUSD.toLocaleString() : h.priceUSD.toFixed(4)}</td>
+                    <td className="px-3 py-3 text-right font-mono font-semibold text-white/80">${valueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className={`px-3 py-3 text-right font-mono font-semibold ${isPnlPos ? "text-emerald-400" : "text-red-400"}`}>
+                      {isPnlPos ? "+" : ""}{pnl.toFixed(2)}
+                    </td>
+                    <td className={`px-3 py-3 text-right font-mono ${isPnlPos ? "text-emerald-400" : "text-red-400"}`}>
+                      {isPnlPos ? "+" : ""}{pnlPct.toFixed(2)}%
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => setDepositModal(h)} className="text-[9px] px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all flex items-center gap-0.5">
+                          <Plus size={9} /> Deposit
+                        </button>
+                        <button onClick={() => setWithdrawModal(h)} className="text-[9px] px-2 py-1 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white/40 hover:text-white/70 hover:border-white/20 transition-all flex items-center gap-0.5">
+                          <Minus size={9} /> Withdraw
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modals */}
-      <SendModal open={!!sendModal} onClose={() => setSendModal(null)} holding={sendModal} />
-      <ReceiveModal open={!!receiveModal} onClose={() => setReceiveModal(null)} holding={receiveModal} />
+      {/* Recent Transactions */}
+      <div className="glass rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.05]">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Recent Transactions</p>
+        </div>
+        <div className="divide-y divide-white/[0.03]">
+          {RECENT_TXS.map((tx) => {
+            const isReceive = tx.type === "receive";
+            const holding = HOLDINGS.find(h => h.symbol === tx.asset);
+            return (
+              <div key={tx.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isReceive ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
+                  {isReceive ? <ArrowDownLeft size={14} className="text-emerald-400" /> : <ArrowUpRight size={14} className="text-red-400" />}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white/80 capitalize">{tx.type}</span>
+                    <span className="font-mono text-xs text-white/50">{tx.asset}</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">{tx.hash} · {tx.time}</div>
+                </div>
+                <div className="text-right">
+                  <div className={`font-mono text-sm font-semibold ${isReceive ? "text-emerald-400" : "text-red-400"}`}>
+                    {isReceive ? "+" : "-"}{tx.amount} {tx.asset}
+                  </div>
+                  <div className="font-mono text-[10px] text-white/30">${tx.valueUSD.toLocaleString()}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* Freeze dialog */}
-      <AlertDialog open={showFreezeDialog} onOpenChange={setShowFreezeDialog}>
-        <AlertDialogContent className="bg-[#050508] border-red-500/30">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-400 font-display flex items-center gap-2">
-              <AlertTriangle size={16} />
-              Emergency Freeze
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-white/50">
-              This will immediately block all outgoing transactions from your wallet. This action is reversible only through our support team. Are you sure?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/[0.1] text-white/60">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => { setFrozen(true); setShowFreezeDialog(false); toast({ title: "Wallet frozen", description: "All transactions have been blocked.", variant: "destructive" }); }}
-              className="bg-red-600 hover:bg-red-700"
+      {/* Seed Phrase Modal */}
+      <Dialog open={seedPhraseOpen} onOpenChange={setSeedPhraseOpen}>
+        <DialogContent className="bg-[#0c0f1a] border-white/[0.08] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-400">
+              <Lock size={16} /> Backup Seed Phrase
+            </DialogTitle>
+            <DialogDescription className="text-white/40">
+              Write these 12 words down and keep them safe. Never share them with anyone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+              <div className="flex gap-2">
+                <AlertTriangle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-400/80">Anyone with this phrase can steal your funds. Store it offline.</p>
+              </div>
+            </div>
+
+            {!seedRevealed ? (
+              <button onClick={() => setSeedRevealed(true)} className="w-full py-10 rounded-xl border-2 border-dashed border-amber-500/30 text-amber-400/60 hover:text-amber-400 hover:border-amber-500/50 transition-all flex flex-col items-center gap-2">
+                <EyeOff size={24} />
+                <span className="text-sm font-semibold">Click to reveal seed phrase</span>
+              </button>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {seedWords.map((word, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-white/[0.04] rounded-lg px-2 py-1.5">
+                    <span className="text-[9px] text-white/25 font-mono w-4 flex-shrink-0">{i + 1}.</span>
+                    <span className="font-mono text-xs text-white/80">{word}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => { setSeedPhraseOpen(false); setSeedRevealed(false); }}
+              className="w-full py-2.5 rounded-xl bg-[#4F46E5] text-white text-sm font-semibold hover:bg-[#4338CA] transition-all"
             >
-              Freeze Wallet
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              I've saved my seed phrase
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
