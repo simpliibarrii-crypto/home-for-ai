@@ -14,7 +14,7 @@ alembic==1.18.5
 
 # Data validation
 pydantic==2.7.1
-pydantic-settings==2.3.0
+pydantic-settings==2.14.2
 
 # Auth & security
 python-jose[cryptography]==3.3.0
