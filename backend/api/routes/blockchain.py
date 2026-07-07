@@ -4,11 +4,12 @@ blockchain.py — FastAPI router for blockchain operations.
 Routes:
   GET  /api/blockchain/chains             — List all supported chains
   GET  /api/blockchain/balance/{address}  — Get native + USDC balance for an address
-  POST /api/blockchain/sign               — Sign a message with a private key
+  POST /api/blockchain/sign               — Sign a message with a private key (DISABLED by default)
 """
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import asdict
 from typing import Optional
@@ -26,6 +27,11 @@ from blockchain.wallet_manager import HDWalletManager
 # In production, replace with JWT-based auth tied to the authenticated user's
 # own session and use a KMS / HSM for signing instead of raw private keys.
 security_scheme = HTTPBearer(auto_error=False)
+
+# SECURITY: The /sign endpoint accepts raw private keys over the wire.
+# It is DISABLED by default in all environments.
+# Set ENABLE_RAW_KEY_SIGNING=1 to enable (DEVELOPMENT ONLY — never in production).
+_ENABLE_RAW_KEY_SIGNING = os.environ.get("ENABLE_RAW_KEY_SIGNING", "").strip() in ("1", "true", "yes")
 
 router = APIRouter(prefix="/api/blockchain", tags=["blockchain"])
 _registry = ChainRegistry()
@@ -201,7 +207,8 @@ async def get_balance(
 @router.post(
     "/sign",
     response_model=SignMessageResponse,
-    summary="Sign a message with a private key",
+    summary="Sign a message with a private key (DISABLED by default)",
+    include_in_schema=_ENABLE_RAW_KEY_SIGNING,
 )
 async def sign_message(
     request: SignMessageRequest,
@@ -210,12 +217,19 @@ async def sign_message(
     """
     Sign a plain text message using EIP-191 personal_sign.
 
-    WARNING: Never expose private keys in production. Use hardware wallets
-    or secure key management systems (HSM, KMS). This endpoint requires
-    authentication and should NOT be enabled in production with raw private
-    key acceptance — replace with a KMS-backed or hardware-wallet-backed
-    signing flow.
+    ⚠️  WARNING: This endpoint accepts raw private keys over the wire.
+        It is DISABLED by default and must be explicitly enabled via
+        the ENABLE_RAW_KEY_SIGNING environment variable.
+
+        NEVER use this in production. Replace with KMS, HSM, or
+        hardware-wallet-backed signing flows.
     """
+    if not _ENABLE_RAW_KEY_SIGNING:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The /sign endpoint is disabled by default. "
+                   "Set ENABLE_RAW_KEY_SIGNING=1 to enable (development only).",
+        )
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

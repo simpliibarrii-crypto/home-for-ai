@@ -89,6 +89,9 @@ logs/
 coverage/
 .nyc_output/
 
+# Private / commercial documents (not for public open-source repo)
+docs/private/
+
 # Misc
 *.tmp
 *.temp

@@ -212,3 +212,32 @@ class CopyTradeConfig(Base):
             f"<CopyTradeConfig user={self.user_id} agent={self.agent_id!r} "
             f"active={self.is_active}>"
         )
+
+
+# ---------------------------------------------------------------------------
+# User settings
+# ---------------------------------------------------------------------------
+
+class UserSetting(Base):
+    """
+    Per-user settings (theme, notifications, risk tolerance, etc.).
+
+    This replaces the in-memory _USERS / _USER_SETTINGS dicts used in
+    settings.py for data durability across restarts.
+    """
+
+    __tablename__ = "user_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True
+    )
+    theme: Mapped[str] = mapped_column(String(20), default="dark")
+    notification_email: Mapped[bool] = mapped_column(Boolean, default=True)
+    risk_tolerance: Mapped[str] = mapped_column(String(10), default="medium")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserSetting user={self.user_id} theme={self.theme!r}>"

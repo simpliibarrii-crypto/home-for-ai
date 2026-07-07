@@ -145,14 +145,42 @@ class WebSocketManager:
     # Broadcasting
     # ------------------------------------------------------------------
 
+    async def _send_concurrent(
+        self,
+        targets: List[tuple[str, ConnectionInfo]],
+        event: str,
+        payload: Dict[str, Any],
+        max_concurrent: int = 50,
+    ) -> List[str]:
+        """
+        Send an event to multiple clients concurrently using asyncio.gather
+        with a semaphore to limit concurrency.
+
+        Returns a list of client_ids that failed (dead connections).
+        """
+        if not targets:
+            return []
+
+        sem = asyncio.Semaphore(max_concurrent)
+
+        async def _send_one(client_id: str, info: ConnectionInfo) -> str | None:
+            async with sem:
+                try:
+                    await info.send(event, payload)
+                    return None
+                except Exception:
+                    return client_id
+
+        results = await asyncio.gather(
+            *[_send_one(cid, info) for cid, info in targets],
+            return_exceptions=True,
+        )
+        return [cid for cid in results if cid is not None]
+
     async def broadcast_to_all(self, event: str, payload: Dict[str, Any]) -> None:
-        """Broadcast an event to every connected client."""
-        dead: List[str] = []
-        for client_id, info in list(self._connections.items()):
-            try:
-                await info.send(event, payload)
-            except Exception:
-                dead.append(client_id)
+        """Broadcast an event to every connected client concurrently."""
+        targets = [(cid, info) for cid, info in list(self._connections.items())]
+        dead = await self._send_concurrent(targets, event, payload)
         for client_id in dead:
             self.disconnect(client_id)
 
@@ -161,15 +189,12 @@ class WebSocketManager:
     ) -> None:
         """Broadcast an agent event to all clients subscribed to that agent."""
         subscribers = self._agent_subscribers.get(agent_id, set()).copy()
-        dead: List[str] = []
-        for client_id in subscribers:
-            info = self._connections.get(client_id)
-            if not info:
-                continue
-            try:
-                await info.send(event, payload)
-            except Exception:
-                dead.append(client_id)
+        targets = [
+            (cid, info)
+            for cid in subscribers
+            if (info := self._connections.get(cid))
+        ]
+        dead = await self._send_concurrent(targets, event, payload)
         for client_id in dead:
             self.disconnect(client_id)
 
@@ -177,15 +202,12 @@ class WebSocketManager:
         """Push a price tick to all clients subscribed to that symbol."""
         subscribers = self._symbol_subscribers.get(symbol, set()).copy()
         event_payload = {"symbol": symbol, **price_data}
-        dead: List[str] = []
-        for client_id in subscribers:
-            info = self._connections.get(client_id)
-            if not info:
-                continue
-            try:
-                await info.send("market:tick", event_payload)
-            except Exception:
-                dead.append(client_id)
+        targets = [
+            (cid, info)
+            for cid in subscribers
+            if (info := self._connections.get(cid))
+        ]
+        dead = await self._send_concurrent(targets, "market:tick", event_payload)
         for client_id in dead:
             self.disconnect(client_id)
 
@@ -193,12 +215,14 @@ class WebSocketManager:
         self, user_id: str, event: str, payload: Dict[str, Any]
     ) -> None:
         """Send an event to all connections belonging to a specific user."""
-        for info in list(self._connections.values()):
-            if info.user_id == user_id:
-                try:
-                    await info.send(event, payload)
-                except Exception:
-                    self.disconnect(info.client_id)
+        targets = [
+            (info.client_id, info)
+            for info in list(self._connections.values())
+            if info.user_id == user_id
+        ]
+        dead = await self._send_concurrent(targets, event, payload)
+        for client_id in dead:
+            self.disconnect(client_id)
 
     async def send_to_client(
         self, client_id: str, event: str, payload: Dict[str, Any]
@@ -277,6 +301,7 @@ class WebSocketManager:
         2. All clients (for global events like agent:trade, agent:pnl)
 
         This is registered as the agent event callback.
+        Uses concurrent sends to avoid head-of-line blocking.
         """
         agent_id = payload.get("agent_id", "")
 
@@ -289,13 +314,12 @@ class WebSocketManager:
         if event in global_events:
             # Send to clients NOT already subscribed (avoid duplicate)
             already_sent = self._agent_subscribers.get(agent_id, set())
-            dead: List[str] = []
-            for client_id, info in list(self._connections.items()):
-                if client_id not in already_sent:
-                    try:
-                        await info.send(event, payload)
-                    except Exception:
-                        dead.append(client_id)
+            targets = [
+                (cid, info)
+                for cid, info in list(self._connections.items())
+                if cid not in already_sent
+            ]
+            dead = await self._send_concurrent(targets, event, payload)
             for client_id in dead:
                 self.disconnect(client_id)
 

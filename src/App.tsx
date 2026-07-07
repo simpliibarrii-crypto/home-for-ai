@@ -24,10 +24,13 @@ function App() {
         setBackendStatus('error')
       }
         
-      // Listen for backend events
-      unlistenReady = await window.__TAURI__.event.listen('backend:ready', () => setBackendStatus('running'))
-      unlistenStopped = await window.__TAURI__.event.listen('backend:stopped', () => setBackendStatus('stopped'))
-      unlistenError = await window.__TAURI__.event.listen('backend:error', () => setBackendStatus('error'))
+      // Listen for backend events (only in Tauri environment)
+      const tauri = (window as any).__TAURI__
+      if (tauri?.event) {
+        unlistenReady = await tauri.event.listen('backend:ready', () => setBackendStatus('running'))
+        unlistenStopped = await tauri.event.listen('backend:stopped', () => setBackendStatus('stopped'))
+        unlistenError = await tauri.event.listen('backend:error', () => setBackendStatus('error'))
+      }
     }
     init()
       

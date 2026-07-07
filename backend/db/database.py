@@ -56,7 +56,7 @@ async def init_db() -> None:
     Create all database tables. Called once at startup.
     In production, prefer Alembic migrations over this.
     """
-    from db.models import User, Trade, Portfolio, AgentSkillLog, CopyTradeConfig  # noqa: F401
+    from db.models import User, Trade, Portfolio, AgentSkillLog, CopyTradeConfig, UserSetting  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
