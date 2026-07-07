@@ -18,7 +18,7 @@ web3>=7.0.0
 eth-account>=0.13.0
 
 # eth-keys — secp256k1 key operations (dependency of eth-account; pinned for security)
-eth-keys>=0.6.0
+eth-keys>=0.7.0
 
 # eth-abi — ABI encoding/decoding for smart contract calls
 # Used in: eip4337.py (encode UserOperation), converter.py
