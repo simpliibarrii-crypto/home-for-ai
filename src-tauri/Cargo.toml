@@ -1,8 +1,8 @@
 [package]
 name = "ai-workplace-desktop"
 version = "1.0.0"
-description = "AI Workplace Desktop Application"
-authors = ["AI Workplace Team"]
+description = "Home for AI Desktop Application"
+authors = ["Barry Clerjuste"]
 license = "MIT"
 edition = "2021"
 publish = false
@@ -11,22 +11,7 @@ publish = false
 tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0", features = [
-    "macros",
-    "tray-icon",
-    "global-shortcut",
-    "notification",
-    "updater",
-    "http",
-    "store",
-    "log",
-    "positioner",
-    "single-instance",
-    "process",
-    "os",
-    "opener",
-    "shell-all"
-] }
+tauri = { version = "2.0", features = ["tray-icon"] }
 tauri-plugin-shell = { version = "2.0", features = [] }
 tauri-plugin-fs = { version = "2.0", features = [] }
 tauri-plugin-dialog = { version = "2.0", features = [] }
@@ -43,24 +28,16 @@ tauri-plugin-log = { version = "2.0", features = [] }
 tauri-plugin-positioner = { version = "2.0", features = [] }
 tauri-plugin-single-instance = { version = "2.0", features = [] }
 tauri-plugin-deep-link = { version = "2.0", features = [] }
-
-# Serialization
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
-
-# Async
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-
-# HTTP
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 url = { workspace = true }
-
-# Utilities
 uuid = { workspace = true, features = ["v4", "serde"] }
 chrono = { workspace = true, features = ["serde"] }
 regex = { workspace = true }
@@ -69,14 +46,8 @@ rmp-serde = { workspace = true }
 zeroize = { workspace = true }
 secrecy = { workspace = true }
 
-# Shared crate (to be created)
-# ai-workplace-core = { path = "../../shared/src/rust" }
-
 [features]
-# Default features
 default = []
-
-# Platform-specific features
 custom-protocol = []
 
 [profile.dev]
