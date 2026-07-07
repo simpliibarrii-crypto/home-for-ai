@@ -5,10 +5,7 @@ pub mod models;
 pub mod services;
 pub mod utils;
 
-use tauri::{Manager, Runtime};
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run<R: Runtime>() {
+pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
@@ -25,10 +22,10 @@ pub fn run<R: Runtime>() {
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = app.get_webview_window("main").map(|window| {
+            if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
-            });
+            }
         }))
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
@@ -62,41 +59,12 @@ pub fn run<R: Runtime>() {
             commands::files::move_file,
             commands::files::file_exists,
         ])
-        .setup(|app| {
-            // Initialize logging
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
-            }
-
-            // Set up global shortcut for toggle window
-            #[cfg(desktop)]
-            {
-                use tauri_plugin_global_shortcut::GlobalShortcutExt;
-                app.global_shortcut().register("CmdOrCtrl+Shift+A", move |app| {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = if window.is_visible().unwrap_or(false) {
-                            window.hide()
-                        } else {
-                            window.show().and_then(|_| window.set_focus())
-                        };
-                    }
-                }).unwrap();
-            }
-
-            Ok(())
-        })
         .on_window_event(|window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // Hide window instead of closing on close request
-                    if window.label() == "main" {
-                        window.hide().unwrap();
-                        api.prevent_close();
-                    }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    let _ = window.hide();
+                    api.prevent_close();
                 }
-                _ => {}
             }
         })
         .run(tauri::generate_context!())
