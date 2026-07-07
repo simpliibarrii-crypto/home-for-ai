@@ -25,7 +25,7 @@ eth-keys>=0.7.0
 eth-abi>=5.0.0
 
 # eth-typing — typed helpers (ChecksumAddress, HexStr, etc.)
-eth-typing>=5.0.0
+eth-typing>=6.0.0
 
 # hexbytes — bytes subclass with hex representation
 hexbytes>=1.0.0
