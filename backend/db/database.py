@@ -1,11 +1,8 @@
 """
-Home for AI — Database Connection
+Home for AI - Database Connection
 
-Async SQLAlchemy setup supporting both SQLite (development) and
-PostgreSQL (production) via the DATABASE_URL environment variable.
-
-Development:  sqlite+aiosqlite:///./home_for_ai.db
-Production:   postgresql+asyncpg://user:pass@host/dbname
+Async SQLAlchemy setup supporting both SQLite for development and
+PostgreSQL for production via the DATABASE_URL environment variable.
 """
 
 from __future__ import annotations
@@ -23,11 +20,16 @@ from sqlalchemy.orm import DeclarativeBase
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "sqlite+aiosqlite:///./home_for_ai.db"
-)
 
-# SQLite-specific connect args
+def _database_url() -> str:
+    raw_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./home_for_ai.db")
+    if raw_url.startswith("postgresql://"):
+        return raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return raw_url
+
+
+DATABASE_URL = _database_url()
+
 _connect_args: dict = {}
 if DATABASE_URL.startswith("sqlite"):
     _connect_args = {"check_same_thread": False}
@@ -64,14 +66,7 @@ async def init_db() -> None:
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    FastAPI dependency: yield an async database session per request.
-
-    Usage:
-        @router.get("/example")
-        async def example(db: AsyncSession = Depends(get_db)):
-            ...
-    """
+    """Yield an async database session per request."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
