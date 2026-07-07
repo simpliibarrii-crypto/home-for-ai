@@ -13,13 +13,19 @@ import time
 from dataclasses import asdict
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
 from blockchain.chains import ChainRegistry, CHAINS, Chain
 from blockchain.converter import CryptoToFiatConverter, COINGECKO_IDS
 from blockchain.eip4337 import UserOpBuilder, BundlerClient, UserOperation, ENTRY_POINT
 from blockchain.wallet_manager import HDWalletManager
+
+# Simple bearer token auth for endpoints that handle sensitive key material.
+# In production, replace with JWT-based auth tied to the authenticated user's
+# own session and use a KMS / HSM for signing instead of raw private keys.
+security_scheme = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/api/blockchain", tags=["blockchain"])
 _registry = ChainRegistry()
@@ -197,13 +203,25 @@ async def get_balance(
     response_model=SignMessageResponse,
     summary="Sign a message with a private key",
 )
-async def sign_message(request: SignMessageRequest) -> SignMessageResponse:
+async def sign_message(
+    request: SignMessageRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+) -> SignMessageResponse:
     """
     Sign a plain text message using EIP-191 personal_sign.
 
     WARNING: Never expose private keys in production. Use hardware wallets
-    or secure key management systems (HSM, KMS).
+    or secure key management systems (HSM, KMS). This endpoint requires
+    authentication and should NOT be enabled in production with raw private
+    key acceptance — replace with a KMS-backed or hardware-wallet-backed
+    signing flow.
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Provide a valid Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         manager = HDWalletManager(b"\x00" * 64)  # dummy seed — unused for signing
         result = manager.sign_message(request.private_key, request.message)

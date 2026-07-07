@@ -235,7 +235,8 @@ class BaseAgent(ABC):
 
                 # Fetch
                 market_data = await self.fetch_market_data()
-                self.remember({"type": "market_fetch", "symbols": list(market_data.keys())})
+                symbols = list(market_data.keys()) if isinstance(market_data, dict) else []
+                self.remember({"type": "market_fetch", "symbols": symbols})
 
                 # Analyze
                 analysis = await self.analyze(market_data)

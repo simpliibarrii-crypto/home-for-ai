@@ -10,27 +10,31 @@ function App() {
   useEffect(() => {
     // Get app version
     invoke('get_version').then(setVersion).catch(console.error)
-    
+      
+    let unlistenReady: () => void
+    let unlistenStopped: () => void
+    let unlistenError: () => void
+      
     // Check backend status
-    const checkBackend = async () => {
+    const init = async () => {
       try {
         const status = await invoke('get_backend_status')
         setBackendStatus(status.running ? 'running' : 'stopped')
       } catch {
         setBackendStatus('error')
       }
+        
+      // Listen for backend events
+      unlistenReady = await window.__TAURI__.event.listen('backend:ready', () => setBackendStatus('running'))
+      unlistenStopped = await window.__TAURI__.event.listen('backend:stopped', () => setBackendStatus('stopped'))
+      unlistenError = await window.__TAURI__.event.listen('backend:error', () => setBackendStatus('error'))
     }
-    checkBackend()
-    
-    // Listen for backend events
-    const unlistenReady = await window.__TAURI__.event.listen('backend:ready', () => setBackendStatus('running'))
-    const unlistenStopped = await window.__TAURI__.event.listen('backend:stopped', () => setBackendStatus('stopped'))
-    const unlistenError = await window.__TAURI__.event.listen('backend:error', () => setBackendStatus('error'))
-    
+    init()
+      
     return () => {
-      unlistenReady()
-      unlistenStopped()
-      unlistenError()
+      unlistenReady?.()
+      unlistenStopped?.()
+      unlistenError?.()
     }
   }, [])
 

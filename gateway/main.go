@@ -61,9 +61,9 @@ func main() {
 		IdleTimeout:           cfg.IdleTimeout,
 		DisableStartupMessage: false,
 		ErrorHandler:          globalErrorHandler,
-		// Enable trusted proxy for X-Forwarded-For
-		EnableTrustedProxyCheck: true,
-		TrustedProxies:          []string{"0.0.0.0/0"},
+		// Trusted proxy check disabled by default — enable with specific IPs in production
+		EnableTrustedProxyCheck: false,
+		TrustedProxies:          []string{},
 		ProxyHeader:             fiber.HeaderXForwardedFor,
 	})
 

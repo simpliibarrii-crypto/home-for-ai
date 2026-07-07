@@ -32,9 +32,11 @@ const BIP39_POOL = [
 function generateMnemonic(): string[] {
   const words: string[] = [];
   const pool = [...BIP39_POOL];
-  const seed = Date.now() % pool.length;
+  const poolSize = pool.length;
+  const randomBytes = new Uint16Array(12);
+  crypto.getRandomValues(randomBytes);
   for (let i = 0; i < 12; i++) {
-    const idx = (seed + i * 7 + i * i * 3) % pool.length;
+    const idx = randomBytes[i] % poolSize;
     words.push(pool[idx]);
   }
   return words;
