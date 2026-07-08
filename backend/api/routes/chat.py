@@ -8,8 +8,6 @@ The WebSocket endpoint sends back streamed tokens as they arrive from
 the LLM, then emits a final "chat:message" event on completion.
 """
 
-from __future__ import annotations
-
 import logging
 import secrets
 
