@@ -40,7 +40,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from agents.agent_registry import get_all_agents, start_all_agents, stop_all_agents
-from api.routes import agents, chat, copy_trade, market, portfolio, settings
+from api.routes import agents, chat, copy_trade, market, portfolio, raven, settings
 from api.websocket_manager import get_websocket_manager
 from db.database import init_db
 from security.rate_limiter import limiter
@@ -107,8 +107,8 @@ IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
     title="Home for AI",
     description=(
-        "Autonomous AI trading agent platform — 8 cat-identity agents powered by "
-        "Kimi 2.6 + DeepSeek V3 fusion."
+        "Local-first AI command center for agent workflows, run records, "
+        "Raven Evidence Graph traces, and token-efficient reasoning."
     ),
     version="1.0.0",
     docs_url=None if IS_PRODUCTION else "/docs",
@@ -173,6 +173,7 @@ app.include_router(portfolio.router, prefix=API_PREFIX)
 app.include_router(market.router, prefix=API_PREFIX)
 app.include_router(copy_trade.router, prefix=API_PREFIX)
 app.include_router(settings.router, prefix=API_PREFIX)
+app.include_router(raven.router, prefix=API_PREFIX)
 
 # ---------------------------------------------------------------------------
 # Health check
