@@ -14,14 +14,14 @@ short_description: Local-first desktop MVP for coordinating AI agents and a Fast
 
 # Home for AI
 
-Home for AI is a local-first desktop MVP for coordinating AI agents, market-data experiments, and a Python FastAPI backend from a Tauri + React shell.
+Home for AI is a local-first desktop MVP for coordinating AI agents, market-data experiments, Raven run records, and a Python FastAPI backend from a Tauri + React shell.
 
 The project is early-stage. It is useful as a foundation for agent orchestration, desktop-side controls, backend experimentation, and public product iteration. It is not a certified financial product, broker, investment adviser, or production trading system.
 
 ## Current Focus
 
 - Desktop shell built with Tauri, Rust, React, TypeScript, and Vite
-- Python FastAPI backend with agent, chat, market, portfolio, settings, and websocket routes
+- Python FastAPI backend with agent, chat, market, portfolio, settings, Raven run-record, and websocket routes
 - Local SQLite development path with PostgreSQL-compatible production configuration
 - Safer CI for backend, frontend, Rust, and secret scanning
 - Public-facing documentation that avoids private regulatory drafts and unsupported enterprise claims
@@ -30,7 +30,7 @@ The project is early-stage. It is useful as a foundation for agent orchestration
 
 | Path | Purpose |
 | --- | --- |
-| `backend/` | FastAPI backend, agents, market data, auth, database, and tests |
+| `backend/` | FastAPI backend, agents, market data, auth, database, Raven run records, and tests |
 | `src/` | React/Vite frontend |
 | `src-tauri/` | Tauri desktop wrapper and Rust commands |
 | `.github/workflows/` | CI checks for backend, frontend, Rust, and secrets |
@@ -47,6 +47,17 @@ DATABASE_URL=sqlite+aiosqlite:///./home_for_ai.db python main.py
 ```
 
 Open `http://localhost:8000/health` or `http://localhost:8000/docs` in development.
+
+## Raven Run Records
+
+Home for AI now exposes a Raven-compatible run-record preview surface under `/api/v1/raven`. It creates portable `home.raven_run_record.v1` records that include:
+
+- `raven.evidence_graph.v1` source, claim, confidence, risk, and answer trace metadata
+- Raven Token Economy fields such as draft lane, thinking level, context budget, saved context tokens, confidence floor, verification spans, and escalation status
+- privacy-aware export redaction for private and PHI-marked local runs
+- replay policy and input digest fields so scientific or agent workflows can be reviewed later
+
+This is model/inference token-saving metadata, not crypto tokenomics.
 
 ## Frontend Quickstart
 
@@ -84,7 +95,7 @@ Use a strong secret and a managed database connection outside local development.
 
 ## Project Direction
 
-Home for AI can become the desktop home base for a broader agent ecosystem: local controls, auditable backend calls, model routing, data connectors, and user-facing workflows. The next useful milestones are reliable tests, a clean packaged desktop build, a real onboarding flow, and a narrow demo that works end to end without private credentials.
+Home for AI can become the desktop home base for a broader agent ecosystem: local controls, auditable backend calls, model routing, data connectors, Raven Evidence Graph traces, Token Economy run metadata, and user-facing workflows. The next useful milestones are reliable tests, a clean packaged desktop build, a real onboarding flow, and a narrow demo that works end to end without private credentials.
 
 ## License
 
