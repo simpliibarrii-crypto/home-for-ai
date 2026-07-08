@@ -34,7 +34,7 @@ yfinance==0.2.38
 feedparser==6.0.11
 
 # LLM integration (OpenRouter-compatible OpenAI SDK)
-openai==1.35.3
+openai==2.44.0
 
 # Environment management
 python-dotenv==1.0.1
