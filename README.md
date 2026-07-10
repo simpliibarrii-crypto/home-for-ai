@@ -1,4 +1,4 @@
-<p align="center">\n  <strong><a href="https://barry-ai-public.simpliibarrii.chatgpt.site">Explore the complete AI research & projects portfolio →</a></strong>\n</p>\n\n---
+---
 language:
 - en
 license: mit
@@ -11,6 +11,10 @@ tags:
 library_name: custom
 short_description: Local-first desktop MVP for coordinating AI agents and a FastAPI backend.
 ---
+<p align="center">
+  <strong><a href="https://barry-ai-public.simpliibarrii.chatgpt.site">Explore the complete AI research & projects portfolio →</a></strong>
+</p>
+
 
 # Home for AI
 
