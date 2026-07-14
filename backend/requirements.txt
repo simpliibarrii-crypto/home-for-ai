@@ -9,7 +9,7 @@ python-multipart==0.0.32
 
 # Database
 sqlalchemy==2.0.30
-aiosqlite==0.22.0
+aiosqlite==0.22.1
 asyncpg==0.30.0
 alembic==1.13.1
 
