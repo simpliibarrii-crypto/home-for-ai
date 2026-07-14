@@ -40,7 +40,7 @@ mnemonic>=0.21
 
 # httpx — async HTTP client for CoinGecko, bundler RPC
 # Used in: converter.py, eip4337.py
-httpx>=0.27.0
+httpx>=0.28.1
 
 # ── Cryptography ──────────────────────────────────────────────────────────────
 
