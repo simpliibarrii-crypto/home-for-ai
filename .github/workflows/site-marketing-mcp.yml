@@ -1,0 +1,39 @@
+name: Site Marketing MCP
+
+on:
+  pull_request:
+    paths:
+      - "integrations/site-marketing-mcp/**"
+      - ".github/workflows/site-marketing-mcp.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "integrations/site-marketing-mcp/**"
+      - ".github/workflows/site-marketing-mcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/site-marketing-mcp
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check and build
+        run: npm run check
