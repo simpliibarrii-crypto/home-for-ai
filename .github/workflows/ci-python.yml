@@ -26,7 +26,7 @@ jobs:
       JWT_SECRET_KEY: test-secret-change-me
       OPENROUTER_API_KEY: test-key
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     if: hashFiles('package.json') != ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     if: hashFiles('Cargo.toml') != '' || hashFiles('src-tauri/Cargo.toml') != ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Cargo check Tauri
         if: hashFiles('src-tauri/Cargo.toml') != ''
@@ -70,5 +70,5 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: gitleaks/gitleaks-action@v3
