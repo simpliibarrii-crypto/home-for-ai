@@ -259,11 +259,15 @@ for (const method of ["get", "delete"] as const) {
   });
 }
 
-const port = Number.parseInt(process.env.PORT || "3000", 10);
-app.listen(port, "0.0.0.0", (error?: Error) => {
-  if (error) {
-    console.error("Failed to start MCP server", error);
-    process.exit(1);
-  }
-  console.log(`Home for AI Site + Marketing MCP listening on port ${port}`);
-});
+export default app;
+
+if (process.env.VERCEL !== "1") {
+  const port = Number.parseInt(process.env.PORT || "3000", 10);
+  app.listen(port, "0.0.0.0", (error?: Error) => {
+    if (error) {
+      console.error("Failed to start MCP server", error);
+      process.exit(1);
+    }
+    console.log(`Home for AI Site + Marketing MCP listening on port ${port}`);
+  });
+}
