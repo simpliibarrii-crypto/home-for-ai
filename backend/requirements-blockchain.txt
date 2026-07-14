@@ -45,7 +45,7 @@ httpx>=0.27.0
 # ── Cryptography ──────────────────────────────────────────────────────────────
 
 # cryptography — PBKDF2, AES-GCM (for encrypted wallet storage)
-cryptography>=43.0.0
+cryptography>=49.0.0
 
 # coincurve — fast secp256k1 Python binding (optional, speeds up key derivation)
 # Uncomment if performance of BIP-32 derivation matters at scale:
