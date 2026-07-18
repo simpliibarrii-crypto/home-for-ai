@@ -1,0 +1,12 @@
+# Historical findings reviewed during the July 2026 runtime audit.
+# Current source no longer contains static wallet keys, privileged credential
+# defaults, or token-shaped gateway responses. The Base USDC contract address
+# is public chain metadata, not a credential.
+3fcb142688fc99c0bdb83b83825f9c89d5a85ba6:blockchain-sdk/python/wallet.py:generic-api-key:26
+3fcb142688fc99c0bdb83b83825f9c89d5a85ba6:blockchain-sdk/src/payments.ts:generic-api-key:10
+3fcb142688fc99c0bdb83b83825f9c89d5a85ba6:blockchain-sdk/src/wallet.ts:generic-api-key:29
+3fcb142688fc99c0bdb83b83825f9c89d5a85ba6:ui/server/storage.ts:generic-api-key:301
+3fcb142688fc99c0bdb83b83825f9c89d5a85ba6:blockchain-sdk/tests/test_wallet.ts:generic-api-key:67
+3fcb142688fc99c0bdb83b83825f9c89d5a85ba6:blockchain-sdk/tests/test_wallet.ts:generic-api-key:82
+c8c0824961e9571361465670f8c66041b73fb48e:ui/server/storage.ts:generic-api-key:297
+24a1edfabb9bf44ba0e3296d4da0a022da0b2e24:gateway/api/routes.go:generic-api-key:148
