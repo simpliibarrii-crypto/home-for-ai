@@ -1,0 +1,15 @@
+<svg width="1400" height="360" viewBox="0 0 1400 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Home for AI</title><desc id="desc">A sovereign command workplace in the Raven AI ecosystem.</desc>
+  <defs><radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1150 40) rotate(143) scale(600 470)"><stop stop-color="#35131C"/><stop offset=".5" stop-color="#0D0D0F"/><stop offset="1" stop-color="#050505"/></radialGradient><linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F04460"/><stop offset="1" stop-color="#8A1528"/></linearGradient><pattern id="grid" width="38" height="38" patternUnits="userSpaceOnUse"><path d="M38 0H0V38" stroke="#FFFFFF" stroke-opacity=".035"/></pattern></defs>
+  <rect width="1400" height="360" rx="28" fill="url(#bg)"/><rect width="1400" height="360" rx="28" fill="url(#grid)"/><rect x="1" y="1" width="1398" height="358" rx="27" stroke="#FFFFFF" stroke-opacity=".08"/>
+  <text x="78" y="72" fill="#C8273F" font-family="ui-monospace, monospace" font-size="13" letter-spacing="4">RAVEN ECOSYSTEM / DESKTOP COMMAND SURFACE</text>
+  <text x="78" y="160" fill="#F4EFE7" font-family="Georgia, serif" font-size="64" font-weight="600">Home for AI</text>
+  <text x="80" y="208" fill="#C9AD7D" font-family="Avenir Next, Segoe UI, Arial, sans-serif" font-size="25">A sovereign command workplace.</text>
+  <line x1="80" y1="242" x2="660" y2="242" stroke="url(#red)" stroke-width="3"/>
+  <text x="80" y="283" fill="#8F8A83" font-family="ui-monospace, monospace" font-size="15" letter-spacing="1">LOCAL CONTROL  ·  EVIDENCE TRACES  ·  HUMAN AUTHORITY</text>
+  <g transform="translate(1015 56)">
+    <rect x="10" y="10" width="282" height="210" rx="23" fill="#09090A" stroke="#C9AD7D" stroke-opacity=".22"/><rect x="31" y="38" width="55" height="155" rx="12" fill="#151518"/><rect x="103" y="38" width="166" height="62" rx="13" fill="#151518" stroke="#C8273F" stroke-opacity=".46"/><rect x="103" y="116" width="78" height="77" rx="13" fill="#151518"/><rect x="191" y="116" width="78" height="77" rx="13" fill="#151518"/>
+    <circle cx="59" cy="64" r="10" fill="#C8273F"/><path d="M119 59H235M119 76H208" stroke="#C9AD7D" stroke-opacity=".54" stroke-width="4" stroke-linecap="round"/><path d="M121 145H160M121 162H151M208 145H248M208 162H238" stroke="#8F8A83" stroke-opacity=".5" stroke-width="4" stroke-linecap="round"/>
+    <text x="151" y="262" text-anchor="middle" fill="#8F8A83" font-family="ui-monospace, monospace" font-size="11" letter-spacing="2">ACTIVE PRODUCT</text>
+  </g>
+</svg>
