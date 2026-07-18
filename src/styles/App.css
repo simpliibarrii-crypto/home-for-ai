@@ -5,13 +5,13 @@
   --panel-strong: #111216;
   --panel-soft: #17181d;
   --line: rgba(255, 255, 255, 0.09);
-  --line-hot: rgba(190, 34, 55, 0.52);
-  --ivory: #f4efe6;
-  --muted: #908e8a;
-  --crimson: #be2237;
-  --crimson-bright: #ed3d57;
-  --champagne: #c9ad7e;
-  --success: #6fcf97;
+  --line-hot: rgba(200, 39, 63, 0.52);
+  --ivory: #f4efe7;
+  --muted: #8f8a83;
+  --crimson: #c8273f;
+  --crimson-bright: #f04460;
+  --champagne: #c9ad7d;
+  --success: #78d7a0;
 }
 
 button,
@@ -39,8 +39,8 @@ textarea:focus-visible {
   grid-template-columns: 244px minmax(0, 1fr);
   color: var(--ivory);
   background:
-    radial-gradient(circle at 78% 9%, rgba(190, 34, 55, 0.16), transparent 26rem),
-    radial-gradient(circle at 18% 92%, rgba(201, 173, 126, 0.08), transparent 30rem),
+    radial-gradient(circle at 78% 9%, rgba(200, 39, 63, 0.16), transparent 26rem),
+    radial-gradient(circle at 18% 92%, rgba(201, 173, 125, 0.08), transparent 30rem),
     var(--void);
 }
 
@@ -69,10 +69,10 @@ textarea:focus-visible {
   height: 42px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(201, 173, 126, 0.38);
+  border: 1px solid rgba(201, 173, 125, 0.38);
   border-radius: 14px;
   color: var(--champagne);
-  background: linear-gradient(145deg, rgba(201, 173, 126, 0.1), rgba(190, 34, 55, 0.08));
+  background: linear-gradient(145deg, rgba(201, 173, 125, 0.1), rgba(200, 39, 63, 0.08));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -120,8 +120,8 @@ textarea:focus-visible {
 
 .nav-item.active {
   color: var(--ivory);
-  border-color: rgba(190, 34, 55, 0.24);
-  background: linear-gradient(90deg, rgba(190, 34, 55, 0.16), rgba(190, 34, 55, 0.035));
+  border-color: rgba(200, 39, 63, 0.24);
+  background: linear-gradient(90deg, rgba(200, 39, 63, 0.16), rgba(200, 39, 63, 0.035));
   box-shadow: inset 3px 0 0 var(--crimson);
 }
 
@@ -138,7 +138,7 @@ textarea:focus-visible {
   border: 1px solid var(--line);
   border-radius: 14px;
   color: var(--champagne);
-  background: rgba(201, 173, 126, 0.045);
+  background: rgba(201, 173, 125, 0.045);
 }
 
 .sidebar-security strong,
@@ -237,12 +237,12 @@ textarea:focus-visible {
   height: 7px;
   border-radius: 999px;
   background: var(--success);
-  box-shadow: 0 0 12px rgba(111, 207, 151, 0.65);
+  box-shadow: 0 0 12px rgba(120, 215, 160, 0.65);
 }
 
 .runtime-pill[data-status='offline'] .runtime-dot {
   background: var(--crimson-bright);
-  box-shadow: 0 0 12px rgba(237, 61, 87, 0.65);
+  box-shadow: 0 0 12px rgba(240, 68, 96, 0.65);
 }
 
 .runtime-pill[data-status='checking'] .runtime-dot {
@@ -269,7 +269,7 @@ textarea:focus-visible {
   border-radius: 28px;
   background:
     linear-gradient(130deg, rgba(22, 22, 26, 0.96), rgba(8, 8, 10, 0.94)),
-    radial-gradient(circle at 80% 20%, rgba(190, 34, 55, 0.2), transparent 28rem);
+    radial-gradient(circle at 80% 20%, rgba(200, 39, 63, 0.2), transparent 28rem);
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.42);
 }
 
@@ -347,13 +347,13 @@ textarea:focus-visible {
 
 .button-primary {
   border-color: var(--crimson);
-  background: linear-gradient(135deg, #ce273f, #8f1529);
-  box-shadow: 0 14px 32px rgba(190, 34, 55, 0.22);
+  background: linear-gradient(135deg, var(--crimson), #8f1529);
+  box-shadow: 0 14px 32px rgba(200, 39, 63, 0.22);
 }
 
 .button-ghost:hover {
-  border-color: rgba(201, 173, 126, 0.38);
-  background: rgba(201, 173, 126, 0.06);
+  border-color: rgba(201, 173, 125, 0.38);
+  background: rgba(201, 173, 125, 0.06);
 }
 
 .orbital-console {
@@ -365,12 +365,12 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(190, 34, 55, 0.12), transparent 62%);
+  background: radial-gradient(circle, rgba(200, 39, 63, 0.12), transparent 62%);
 }
 
 .orbit {
   position: absolute;
-  border: 1px solid rgba(201, 173, 126, 0.18);
+  border: 1px solid rgba(201, 173, 125, 0.18);
   border-radius: 999px;
 }
 
@@ -398,7 +398,7 @@ textarea:focus-visible {
   border-radius: 999px;
   color: var(--crimson-bright);
   background: radial-gradient(circle at 40% 30%, #231218, #09090b 68%);
-  box-shadow: 0 0 0 12px rgba(190, 34, 55, 0.035), 0 0 70px rgba(190, 34, 55, 0.22);
+  box-shadow: 0 0 0 12px rgba(200, 39, 63, 0.035), 0 0 70px rgba(200, 39, 63, 0.22);
 }
 
 .console-core span {
@@ -527,8 +527,8 @@ textarea:focus-visible {
 
 .workspace-row:hover,
 .workspace-row.active {
-  border-color: rgba(201, 173, 126, 0.2);
-  background: rgba(201, 173, 126, 0.045);
+  border-color: rgba(201, 173, 125, 0.2);
+  background: rgba(201, 173, 125, 0.045);
 }
 
 .workspace-row.active {
@@ -623,7 +623,7 @@ textarea:focus-visible {
 
 .command-mode span {
   background: var(--crimson-bright);
-  box-shadow: 0 0 12px rgba(237, 61, 87, 0.5);
+  box-shadow: 0 0 12px rgba(240, 68, 96, 0.5);
 }
 
 .message-stream {
@@ -646,7 +646,7 @@ textarea:focus-visible {
 }
 
 .message.operator {
-  border-color: rgba(201, 173, 126, 0.16);
+  border-color: rgba(201, 173, 125, 0.16);
 }
 
 .message > span {
@@ -673,7 +673,7 @@ textarea:focus-visible {
   align-items: flex-end;
   gap: 10px;
   padding: 10px;
-  border: 1px solid rgba(201, 173, 126, 0.18);
+  border: 1px solid rgba(201, 173, 125, 0.18);
   border-radius: 14px;
   background: #0a0a0c;
 }
@@ -703,7 +703,7 @@ textarea:focus-visible {
   border: 1px solid var(--crimson);
   border-radius: 11px;
   color: white;
-  background: linear-gradient(135deg, #ce273f, #8f1529);
+  background: linear-gradient(135deg, var(--crimson), #8f1529);
   cursor: pointer;
 }
 
@@ -727,7 +727,7 @@ textarea:focus-visible {
 
 .quick-commands button:hover {
   color: var(--ivory);
-  border-color: rgba(201, 173, 126, 0.3);
+  border-color: rgba(201, 173, 125, 0.3);
 }
 
 @keyframes spin {
