@@ -1,0 +1,83 @@
+name: Runtime and Taste Audit
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install and build
+        run: |
+          npm install
+          npm run typecheck
+          npm run build
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Launch browser showcase and test desktop plus mobile
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/home-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173 >/dev/null && break; sleep 1; done
+          node <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const errors = [];
+            const testPage = async (name, viewport) => {
+              const page = await browser.newPage({ viewportSize: viewport });
+              page.on('console', message => { if (message.type() === 'error') errors.push(`${name}: ${message.text()}`); });
+              page.on('pageerror', error => errors.push(`${name}: ${error.message}`));
+              await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
+              await page.getByText('Your intelligence should live somewhere worthy of it.').waitFor();
+              await page.screenshot({ path: `home-${name}.png`, fullPage: true });
+              const body = await page.locator('body').innerText();
+              if (!body.includes('HOME//AI') || !body.includes('Evidence trace')) throw new Error(`${name}: essential product language missing`);
+              await page.close();
+            };
+            await testPage('desktop', { width: 1440, height: 1000 });
+            await testPage('mobile', { width: 390, height: 844 });
+            await browser.close();
+            if (errors.length) throw new Error(`Browser console errors:\n${errors.join('\n')}`);
+          })();
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: home-for-ai-visual-smoke
+          path: home-*.png
+
+  taste-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify brand, accessibility, and browser-safe runtime
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app = Path('src/App.tsx').read_text(encoding='utf-8')
+          css = Path('src/styles/App.css').read_text(encoding='utf-8').lower()
+          index_css = Path('src/styles/index.css').read_text(encoding='utf-8').lower()
+          combined = css + index_css
+          for token in ('#050505', '#c8273f', '#c9ad7d', '#f4efe7'):
+              assert token in combined, f'missing canonical brand token {token}'
+          assert '__TAURI_INTERNALS__' in app, 'browser-safe runtime detection missing'
+          assert 'showcase' in app.lower(), 'browser showcase mode missing'
+          assert 'prefers-reduced-motion' in combined
+          assert '#a78bfa' not in combined and '#6d7cff' not in combined
+          print('Home for AI taste contract passed.')
+          PY
