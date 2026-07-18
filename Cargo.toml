@@ -39,7 +39,7 @@ regex = "1.0"
 base64 = "0.21"
 rmp-serde = "1.0"
 zeroize = "1.0"
-secrecy = "0.8"
+secrecy = "0.10"
 
 [profile.release]
 lto = true
