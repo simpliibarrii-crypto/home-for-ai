@@ -9,38 +9,75 @@ tags:
 - ai-agents
 - local-first
 library_name: custom
-short_description: Local-first desktop MVP for coordinating AI agents and a FastAPI backend.
+short_description: A local-first command workplace for coordinating agents, models, knowledge, and evidence traces.
 ---
+
 <p align="center">
-  <strong><a href="https://barry-ai-public.simpliibarrii.chatgpt.site">Explore the complete AI research & projects portfolio →</a></strong>
+  <img src="assets/home-brand-header.svg" alt="Home for AI — a sovereign command workplace" width="100%" />
 </p>
 
+<p align="center">
+  <a href="https://simpliibarrii-crypto.github.io/project.html?project=home-for-ai"><img alt="Browser showcase" src="https://img.shields.io/badge/CASE_STUDY-BROWSER_SHOWCASE-C8273F?style=for-the-badge&labelColor=050505"></a>
+  <a href="https://simpliibarrii-crypto.github.io/research.html"><img alt="Research archive" src="https://img.shields.io/badge/RESEARCH-ARCHIVE-C9AD7D?style=for-the-badge&labelColor=050505"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/LICENSE-MIT-303036?style=for-the-badge&labelColor=050505"></a>
+</p>
 
-# Home for AI
+> **Home for AI** is the desktop command surface for the Raven ecosystem. It coordinates agents, local models, knowledge, backend services, and evidence-linked run records from a Tauri, React, TypeScript, Rust, and FastAPI stack.
 
-Home for AI is a local-first desktop MVP for coordinating AI agents, market-data experiments, Raven run records, and a Python FastAPI backend from a Tauri + React shell.
+**Maturity:** Active product under early-stage development. It is not a certified financial product, broker, investment adviser, or production trading system.
 
-The project is early-stage. It is useful as a foundation for agent orchestration, desktop-side controls, backend experimentation, and public product iteration. It is not a certified financial product, broker, investment adviser, or production trading system.
+## What it proves
 
-## Current Focus
+- A local desktop application can present multiple AI systems as one coherent operator workspace.
+- Browser showcase mode can demonstrate the interface without pretending a Tauri runtime is present.
+- Raven run records can preserve evidence, token policy, replay state, and privacy-aware export metadata.
+- Human authority can remain visible through review, routing, settings, and explicit runtime status.
+- A product can look polished without inventing backend behaviour or unsupported maturity claims.
 
-- Desktop shell built with Tauri, Rust, React, TypeScript, and Vite
-- Python FastAPI backend with agent, chat, market, portfolio, settings, Raven run-record, and websocket routes
-- Local SQLite development path with PostgreSQL-compatible production configuration
-- Safer CI for backend, frontend, Rust, and secret scanning
-- Public-facing documentation that avoids private regulatory drafts and unsupported enterprise claims
+## Product architecture
 
-## Repository Layout
+```mermaid
+flowchart LR
+    User[Operator] --> UI[React command workplace]
+    UI --> Tauri[Tauri and Rust desktop shell]
+    UI --> API[FastAPI backend]
+    API --> Raven[Raven evidence and run records]
+    API --> Hermes[Hermes device routing]
+    API --> Clinical[OpenClinical workflows]
+    Raven --> Vault[Local knowledge and artifacts]
 
-| Path | Purpose |
-| --- | --- |
-| `backend/` | FastAPI backend, agents, market data, auth, database, Raven run records, and tests |
-| `src/` | React/Vite frontend |
-| `src-tauri/` | Tauri desktop wrapper and Rust commands |
-| `.github/workflows/` | CI checks for backend, frontend, Rust, and secrets |
-| `docs/` | Public documentation only |
+    style UI fill:#151518,stroke:#C8273F,color:#F4EFE7
+    style Raven fill:#151518,stroke:#C9AD7D,color:#F4EFE7
+    style Vault fill:#151518,stroke:#78D7A0,color:#F4EFE7
+```
 
-## Backend Quickstart
+## Repository layout
+
+| Path | Role |
+|---|---|
+| `src/` | Branded React and TypeScript command interface |
+| `src-tauri/` | Rust commands and desktop application wrapper |
+| `backend/` | FastAPI agents, chat, market, settings, Raven records, and websocket routes |
+| `docs/` | Public architecture and product documentation |
+| `.github/workflows/` | Backend, frontend, Rust, and secret-scanning checks |
+
+## Frontend showcase
+
+```bash
+npm install
+npm run dev
+```
+
+The interface detects whether it is running inside Tauri. In a browser it enters an honest showcase state rather than failing desktop-only commands.
+
+## Desktop runtime
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+## Backend
 
 ```bash
 cd backend
@@ -50,57 +87,49 @@ pip install -r requirements.txt
 DATABASE_URL=sqlite+aiosqlite:///./home_for_ai.db python main.py
 ```
 
-Open `http://localhost:8000/health` or `http://localhost:8000/docs` in development.
+Development endpoints:
 
-## Raven Run Records
+- Health: `http://localhost:8000/health`
+- API documentation: `http://localhost:8000/docs`
 
-Home for AI now exposes a Raven-compatible run-record preview surface under `/api/v1/raven`. It creates portable `home.raven_run_record.v1` records that include:
+## Raven run records
 
-- `raven.evidence_graph.v1` source, claim, confidence, risk, and answer trace metadata
-- Raven Token Economy fields such as draft lane, thinking level, context budget, saved context tokens, confidence floor, verification spans, and escalation status
-- privacy-aware export redaction for private and PHI-marked local runs
-- replay policy and input digest fields so scientific or agent workflows can be reviewed later
+The `/api/v1/raven` preview surface creates `home.raven_run_record.v1` records containing:
 
-This is model/inference token-saving metadata, not crypto tokenomics.
+- `raven.evidence_graph.v1` sources, claims, confidence, risk, and answer traces
+- draft lane, thinking level, context budget, saved context, confidence floor, verification spans, and escalation state
+- replay policy and input digests
+- privacy-aware redaction for private and PHI-marked local runs
 
-## Frontend Quickstart
+This is model and inference efficiency metadata, not cryptocurrency tokenomics.
 
-```bash
-npm install
-npm run dev
-```
+## Safety and scope
 
-## Desktop Quickstart
+- Do not use experimental agent output for live financial decisions without appropriate legal, security, compliance, and risk review.
+- Keep credentials, private filings, investor documents, personal contact drafts, and commercial strategy out of the public repository.
+- Treat browser showcase behaviour as demonstration data, not a connected backend.
+- Keep public claims aligned with verified product status.
 
-```bash
-npm install
-npm run tauri:dev
-```
+## Ecosystem role
 
-## Environment
+| System | Home for AI relationship |
+|---|---|
+| [Raven AI](https://github.com/simpliibarrii-crypto/raven-ai) | Displays evidence graphs, scientific gates, run records, and token policy |
+| [Hermes Edge](https://github.com/simpliibarrii-crypto/hermes-edge) | Displays local route choices, runtime state, model profiles, and fallbacks |
+| [OpenClinical AI](https://github.com/simpliibarrii-crypto/openclinical-ai) | Hosts reviewable consent-aware workflows without hiding clinical boundaries |
+| [Raven BioComputer](https://github.com/simpliibarrii-crypto/simpliibarrii-crypto-raven-biocomputer) | Shows bounded biology runs, artifacts, replay state, and receipts |
+| JSpace Chain | Supplies observable policy and risk snapshots for agent orchestration |
 
-Useful development defaults:
+## Contributing
 
-```bash
-DATABASE_URL=sqlite+aiosqlite:///./home_for_ai.db
-ENVIRONMENT=development
-JWT_SECRET_KEY=change-me
-OPENROUTER_API_KEY=optional-for-local-dev
-```
+Start with **[accessibility, onboarding, and browser showcase tasks](https://github.com/simpliibarrii-crypto/home-for-ai/issues/48)**. Preserve the obsidian, crimson, and champagne design system and avoid fake runtime integrations.
 
-Use a strong secret and a managed database connection outside local development.
+## Public proof
 
-## Safety Notes
-
-- Do not use this software for live financial decisions without legal, security, compliance, and trading-risk review.
-- Agent output should be treated as experimental workflow assistance, not financial advice.
-- Keep private filings, investor plans, personal contact drafts, credentials, and commercial strategy documents out of the public repository.
-- Public claims should match verified product status.
-
-## Project Direction
-
-Home for AI can become the desktop home base for a broader agent ecosystem: local controls, auditable backend calls, model routing, data connectors, Raven Evidence Graph traces, Token Economy run metadata, and user-facing workflows. The next useful milestones are reliable tests, a clean packaged desktop build, a real onboarding flow, and a narrow demo that works end to end without private credentials.
+- [Interactive Home for AI case study](https://simpliibarrii-crypto.github.io/project.html?project=home-for-ai)
+- [Complete portfolio](https://simpliibarrii-crypto.github.io/)
+- [Research archive](https://simpliibarrii-crypto.github.io/research.html)
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
