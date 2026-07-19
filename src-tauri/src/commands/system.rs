@@ -1,6 +1,7 @@
 //! System Commands
 
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::AppHandle;
+use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
 pub fn get_system_info() -> serde_json::Value {
@@ -14,7 +15,7 @@ pub fn get_system_info() -> serde_json::Value {
 
 #[tauri::command]
 pub async fn open_external(app: AppHandle, url: String) -> Result<(), String> {
-    app.shell()
-        .open(&url, None)
-        .map_err(|e| e.to_string())
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|error| error.to_string())
 }
