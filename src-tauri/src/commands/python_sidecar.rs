@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
 use tokio::sync::Mutex as TokioMutex;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,7 +25,7 @@ impl Default for PythonBackendConfig {
             port: 8000,
             python_path: None,
             script_path: "backend/main.py".to_string(),
-            args: vec![],
+            args: Vec::new(),
             env: HashMap::new(),
         }
     }
@@ -44,27 +45,27 @@ type StatusState = Arc<TokioMutex<BackendStatus>>;
 static BACKEND_STATE: std::sync::OnceLock<BackendState> = std::sync::OnceLock::new();
 static STATUS_STATE: std::sync::OnceLock<StatusState> = std::sync::OnceLock::new();
 
-fn get_backend_state() -> &'static BackendState {
+fn backend_state() -> &'static BackendState {
     BACKEND_STATE.get_or_init(|| Arc::new(TokioMutex::new(None)))
 }
 
-fn get_status_state() -> &'static StatusState {
+fn status_state() -> &'static StatusState {
     STATUS_STATE.get_or_init(|| Arc::new(TokioMutex::new(BackendStatus::default())))
 }
 
 #[tauri::command]
-pub async fn start_python_backend(app: AppHandle, config: PythonBackendConfig) -> Result<BackendStatus, String> {
-    let state = get_backend_state();
-    let status = get_status_state();
-
+pub async fn start_python_backend(
+    app: AppHandle,
+    config: PythonBackendConfig,
+) -> Result<BackendStatus, String> {
     {
-        let status_guard = status.lock().await;
-        if status_guard.running {
-            return Ok(status_guard.clone());
+        let status = status_state().lock().await;
+        if status.running {
+            return Ok(status.clone());
         }
     }
 
-    let python_cmd = config.python_path.unwrap_or_else(|| {
+    let executable = config.python_path.unwrap_or_else(|| {
         if cfg!(target_os = "windows") {
             "python.exe".to_string()
         } else {
@@ -72,59 +73,47 @@ pub async fn start_python_backend(app: AppHandle, config: PythonBackendConfig) -
         }
     });
 
-    let mut cmd = tauri_plugin_shell::Command::new(python_cmd);
-    cmd.arg(&config.script_path);
-
-    for arg in &config.args {
-        cmd.arg(arg);
+    let mut command = app.shell().command(executable).arg(&config.script_path);
+    for argument in &config.args {
+        command = command.arg(argument);
     }
-
     for (key, value) in &config.env {
-        cmd.env(key, value);
+        command = command.env(key, value);
     }
-
     let backend_dir = std::path::Path::new(&config.script_path)
         .parent()
-        .unwrap_or(std::path::Path::new("backend"));
-    cmd.env("PYTHONPATH", backend_dir);
-    cmd.env("PORT", config.port.to_string());
+        .unwrap_or_else(|| std::path::Path::new("backend"));
+    command = command
+        .env("PYTHONPATH", backend_dir)
+        .env("PORT", config.port.to_string());
 
-    let (mut rx, child) = cmd
+    let (mut events, child) = command
         .spawn()
-        .map_err(|e| format!("Failed to spawn python backend: {}", e))?;
-
+        .map_err(|error| format!("Failed to spawn Python backend: {error}"))?;
     let pid = child.pid();
-
-    {
-        let mut backend_guard = state.lock().await;
-        *backend_guard = Some(child);
-    }
+    *backend_state().lock().await = Some(child);
 
     let backend_url = format!("http://{}:{}", config.host, config.port);
     {
-        let mut status_guard = status.lock().await;
-        status_guard.running = true;
-        status_guard.pid = Some(pid);
-        status_guard.url = Some(backend_url.clone());
-        status_guard.error = None;
+        let mut status = status_state().lock().await;
+        *status = BackendStatus {
+            running: true,
+            pid: Some(pid),
+            url: Some(backend_url.clone()),
+            error: None,
+        };
     }
 
     let app_handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
+        while let Some(event) = events.recv().await {
             match event {
                 CommandEvent::Stdout(line) => {
                     let output = String::from_utf8_lossy(&line);
                     tracing::info!("[Python Backend] {}", output.trim());
-
                     if output.contains("Application startup complete")
                         || output.contains("Uvicorn running on")
-                        || output.contains("Running on")
                     {
-                        let mut status_guard = status.lock().await;
-                        status_guard.running = true;
-                        drop(status_guard);
-
                         let _ = app_handle.emit(
                             "backend:ready",
                             BackendStatus {
@@ -137,73 +126,62 @@ pub async fn start_python_backend(app: AppHandle, config: PythonBackendConfig) -
                     }
                 }
                 CommandEvent::Stderr(line) => {
-                    let output = String::from_utf8_lossy(&line);
-                    tracing::error!("[Python Backend Error] {}", output.trim());
+                    tracing::error!(
+                        "[Python Backend] {}",
+                        String::from_utf8_lossy(&line).trim()
+                    );
                 }
-                CommandEvent::Error(err) => {
-                    tracing::error!("[Python Backend Process Error] {}", err);
-                    let mut status_guard = status.lock().await;
-                    status_guard.running = false;
-                    status_guard.error = Some(err.to_string());
+                CommandEvent::Error(error) => {
+                    let message = error.to_string();
+                    tracing::error!("[Python Backend] {message}");
+                    let mut status = status_state().lock().await;
+                    status.running = false;
+                    status.error = Some(message.clone());
+                    let _ = app_handle.emit("backend:error", status.clone());
                 }
                 CommandEvent::Terminated(payload) => {
-                    tracing::info!("[Python Backend] Exited with code: {:?}", payload.code);
-                    let mut status_guard = status.lock().await;
-                    status_guard.running = false;
-                    status_guard.pid = None;
-                    status_guard.url = None;
-
-                    let _ = app_handle.emit(
-                        "backend:stopped",
-                        BackendStatus {
-                            running: false,
-                            pid: None,
-                            url: None,
-                            error: Some("Process exited".to_string()),
-                        },
-                    );
+                    tracing::info!("[Python Backend] terminated: {payload:?}");
+                    let mut status = status_state().lock().await;
+                    status.running = false;
+                    status.pid = None;
+                    status.url = None;
+                    let _ = app_handle.emit("backend:stopped", status.clone());
                 }
                 _ => {}
             }
         }
     });
 
-    let status_guard = status.lock().await;
-    Ok(status_guard.clone())
+    Ok(status_state().lock().await.clone())
 }
 
 #[tauri::command]
 pub async fn stop_python_backend(app: AppHandle) -> Result<BackendStatus, String> {
-    let state = get_backend_state();
-    let status = get_status_state();
-
-    let mut backend_guard = state.lock().await;
-    if let Some(child) = backend_guard.take() {
+    if let Some(child) = backend_state().lock().await.take() {
         child
             .kill()
-            .map_err(|e| format!("Failed to kill python backend: {}", e))?;
+            .map_err(|error| format!("Failed to stop Python backend: {error}"))?;
     }
 
-    let mut status_guard = status.lock().await;
-    status_guard.running = false;
-    status_guard.pid = None;
-    status_guard.url = None;
-
-    let _ = app.emit("backend:stopped", status_guard.clone());
-
-    Ok(status_guard.clone())
+    let mut status = status_state().lock().await;
+    status.running = false;
+    status.pid = None;
+    status.url = None;
+    let _ = app.emit("backend:stopped", status.clone());
+    Ok(status.clone())
 }
 
 #[tauri::command]
 pub async fn get_backend_status() -> Result<BackendStatus, String> {
-    let status = get_status_state();
-    let status_guard = status.lock().await;
-    Ok(status_guard.clone())
+    Ok(status_state().lock().await.clone())
 }
 
 #[tauri::command]
-pub async fn restart_python_backend(app: AppHandle, config: PythonBackendConfig) -> Result<BackendStatus, String> {
+pub async fn restart_python_backend(
+    app: AppHandle,
+    config: PythonBackendConfig,
+) -> Result<BackendStatus, String> {
     let _ = stop_python_backend(app.clone()).await;
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     start_python_backend(app, config).await
 }
