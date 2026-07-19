@@ -1,8 +1,9 @@
 //! Tauri App Library
 
 pub mod commands;
-pub mod services;
 pub mod utils;
+
+use tauri::Manager;
 
 pub fn run() {
     tauri::Builder::default()
@@ -13,7 +14,7 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_global_shortcut::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_http::init())
