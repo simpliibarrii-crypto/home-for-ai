@@ -141,11 +141,10 @@ func metricsHandler(state *AppState) fiber.Handler {
 
 func loginHandler(cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Stub: in production, validate credentials against the Python backend,
-		// then issue a signed JWT.
-		return c.JSON(fiber.Map{
-			"message": "login endpoint — implement credential validation against Python backend",
-			"token":   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.stub",
+		// The Go gateway must never manufacture authentication tokens. Until it
+		// delegates to the validated Python auth service, fail explicitly.
+		return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
+			"error": "gateway login is not implemented; use the Python auth service",
 		})
 	}
 }

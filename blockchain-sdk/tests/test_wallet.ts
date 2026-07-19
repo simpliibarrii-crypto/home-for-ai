@@ -1,36 +1,24 @@
-/**
- * @homeforai/blockchain-sdk — Wallet Tests
- */
-
 import { generateMnemonic, validateMnemonic, walletFromMnemonic, getAddressForChain } from "../src/wallet";
-import { encrypt, decrypt } from "../src/crypto";
+import { decrypt, deriveKey, encrypt } from "../src/crypto";
 
 describe("generateMnemonic", () => {
   test("generates a 12-word mnemonic", () => {
     const mnemonic = generateMnemonic();
-    expect(typeof mnemonic).toBe("string");
-    const words = mnemonic.split(" ");
-    expect(words.length).toBe(12);
+    expect(mnemonic.split(" ").length).toBe(12);
   });
 
   test("generates unique mnemonics", () => {
-    const m1 = generateMnemonic();
-    const m2 = generateMnemonic();
-    expect(m1).not.toBe(m2);
+    expect(generateMnemonic()).not.toBe(generateMnemonic());
   });
 });
 
 describe("validateMnemonic", () => {
   test("validates a known good mnemonic", () => {
-    const mnemonic = generateMnemonic();
-    expect(validateMnemonic(mnemonic)).toBe(true);
+    expect(validateMnemonic(generateMnemonic())).toBe(true);
   });
 
-  test("rejects an invalid mnemonic", () => {
+  test("rejects invalid input", () => {
     expect(validateMnemonic("invalid words that are not a mnemonic phrase")).toBe(false);
-  });
-
-  test("rejects empty string", () => {
     expect(validateMnemonic("")).toBe(false);
   });
 });
@@ -47,57 +35,48 @@ describe("walletFromMnemonic", () => {
   });
 
   test("derives different addresses for different indices", async () => {
-    const w0 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
-    const w1 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 1);
-    expect(w0.address).not.toBe(w1.address);
+    const wallet0 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
+    const wallet1 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 1);
+    expect(wallet0.address).not.toBe(wallet1.address);
   });
 
-  test("deterministic — same mnemonic + index = same address", async () => {
-    const w1 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
-    const w2 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
-    expect(w1.address).toBe(w2.address);
+  test("is deterministic for the same mnemonic and index", async () => {
+    const wallet1 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
+    const wallet2 = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
+    expect(wallet1.address).toBe(wallet2.address);
   });
 
   test("throws on invalid mnemonic", async () => {
     await expect(walletFromMnemonic("not a valid mnemonic")).rejects.toThrow();
   });
 
-  test("encrypted private key can be round-tripped", async () => {
+  test("encrypted private key can be round-tripped with the mnemonic-derived key", async () => {
     const wallet = await walletFromMnemonic(TEST_MNEMONIC, "evm", 0);
-    const encKey = "4865ab3d2f17e9c0a1b5d8f042c7e36a91f0234567890abcdef1234567890ab";
-    const decrypted = decrypt(wallet.encryptedPrivateKey, encKey);
+    const decrypted = decrypt(wallet.encryptedPrivateKey, deriveKey(TEST_MNEMONIC));
     expect(decrypted).toMatch(/^0x[0-9a-fA-F]{64}$/);
   });
 });
 
 describe("getAddressForChain", () => {
   test("returns a valid EVM address", async () => {
-    const mnemonic = generateMnemonic();
-    const address = await getAddressForChain(mnemonic);
-    expect(address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(await getAddressForChain(generateMnemonic())).toMatch(/^0x[0-9a-fA-F]{40}$/);
   });
 });
 
 describe("crypto", () => {
-  const key = "4865ab3d2f17e9c0a1b5d8f042c7e36a91f0234567890abcdef1234567890ab";
+  const key = deriveKey("test-only encryption fixture");
 
   test("encrypt/decrypt round-trip", () => {
     const original = "Hello, Home for AI!";
-    const ciphertext = encrypt(original, key);
-    const decrypted = decrypt(ciphertext, key);
-    expect(decrypted).toBe(original);
+    expect(decrypt(encrypt(original, key), key)).toBe(original);
   });
 
-  test("each encrypt call produces a unique ciphertext (random IV)", () => {
-    const msg = "test";
-    const c1 = encrypt(msg, key);
-    const c2 = encrypt(msg, key);
-    expect(c1).not.toBe(c2);
+  test("each encrypt call produces a unique ciphertext", () => {
+    expect(encrypt("test", key)).not.toBe(encrypt("test", key));
   });
 
-  test("decrypt fails with wrong key", () => {
+  test("decrypt fails with a different derived key", () => {
     const ciphertext = encrypt("secret", key);
-    const wrongKey = "0000000000000000000000000000000000000000000000000000000000000000";
-    expect(() => decrypt(ciphertext, wrongKey)).toThrow();
+    expect(() => decrypt(ciphertext, deriveKey("different fixture"))).toThrow();
   });
 });

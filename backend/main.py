@@ -25,10 +25,8 @@ OpenAPI docs:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
-import secrets
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict
 
@@ -40,14 +38,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from agents.agent_registry import get_all_agents, start_all_agents, stop_all_agents
-from api.routes import agents, chat, copy_trade, market, portfolio, raven, settings
+from api.routes import agents, auth, chat, copy_trade, market, portfolio, raven, settings
 from api.websocket_manager import get_websocket_manager
 from db.database import init_db
 from security.rate_limiter import limiter
-
-# ---------------------------------------------------------------------------
-# Logging configuration
-# ---------------------------------------------------------------------------
 
 logging.basicConfig(
     level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO),
@@ -56,29 +50,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Application lifespan
-# ---------------------------------------------------------------------------
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """
-    Application startup and shutdown lifecycle handler.
+    """Initialize durable state and agent loops, then shut them down cleanly."""
 
-    On startup:  init DB, register event callbacks, start agent loops.
-    On shutdown: gracefully stop all agent loops.
-    """
-    logger.info("🏠 Home for AI backend starting up...")
-
-    # 1. Initialise database
+    logger.info("Home for AI backend starting up")
     await init_db()
 
-    # 2. Wire agent events → WebSocket broadcasts
     ws_manager = get_websocket_manager()
-
     for agent in get_all_agents():
-        # Register the relay callback for all events from this agent
-        async def make_callback(a_id: str):  # closure to capture agent_id
+        async def make_callback(agent_id: str):
             async def relay(event: str, payload: Dict[str, Any]) -> None:
                 await ws_manager.relay_agent_event(event, payload)
             return relay
@@ -86,21 +67,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         callback = await make_callback(agent.identity.id)
         agent.subscribe(callback)
 
-    # 3. Start all 8 agent loops
     await start_all_agents()
-    logger.info("✅ All agents started. Backend ready.")
+    logger.info("All agents started. Backend ready.")
 
-    yield  # Application runs here
+    yield
 
-    # Shutdown
-    logger.info("🛑 Shutting down Home for AI backend...")
+    logger.info("Shutting down Home for AI backend")
     await stop_all_agents()
-    logger.info("All agents stopped. Goodbye.")
+    logger.info("All agents stopped")
 
-
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
 
 IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 
@@ -117,22 +92,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ---------------------------------------------------------------------------
-# Rate limiter
-# ---------------------------------------------------------------------------
-
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# ---------------------------------------------------------------------------
-# CORS
-# ---------------------------------------------------------------------------
 
 allowed_origins_raw = os.getenv(
     "ALLOWED_ORIGINS",
     "http://localhost:5173,http://localhost:3000,https://home-for-ai.pplx.app",
 )
-allowed_origins = [o.strip() for o in allowed_origins_raw.split(",") if o.strip()]
+allowed_origins = [origin.strip() for origin in allowed_origins_raw.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -142,18 +109,17 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
 
-# ---------------------------------------------------------------------------
-# JWT middleware (inject user_id into request.state for rate-limiter key)
-# ---------------------------------------------------------------------------
 
 @app.middleware("http")
 async def inject_user_id(request: Request, call_next):  # type: ignore[no-untyped-def]
-    """Decode JWT from Authorization header and inject user_id into request state."""
+    """Decode a bearer token, when present, for rate-limit identity."""
+
     try:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
+        authorization = request.headers.get("Authorization", "")
+        if authorization.startswith("Bearer "):
             from security.auth import verify_token
-            payload = verify_token(auth[7:], expected_type="access")
+
+            payload = verify_token(authorization[7:], expected_type="access")
             request.state.user_id = payload.sub
         else:
             request.state.user_id = None
@@ -161,12 +127,9 @@ async def inject_user_id(request: Request, call_next):  # type: ignore[no-untype
         request.state.user_id = None
     return await call_next(request)
 
-# ---------------------------------------------------------------------------
-# Routers
-# ---------------------------------------------------------------------------
 
 API_PREFIX = "/api/v1"
-
+app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(agents.router, prefix=API_PREFIX)
 app.include_router(chat.router, prefix=API_PREFIX)
 app.include_router(portfolio.router, prefix=API_PREFIX)
@@ -175,25 +138,14 @@ app.include_router(copy_trade.router, prefix=API_PREFIX)
 app.include_router(settings.router, prefix=API_PREFIX)
 app.include_router(raven.router, prefix=API_PREFIX)
 
-# ---------------------------------------------------------------------------
-# Health check
-# ---------------------------------------------------------------------------
 
 @app.get("/health", tags=["health"])
 async def health_check() -> Dict[str, Any]:
-    """
-    Health check endpoint.
+    """Return runtime, agent, websocket, and environment health."""
 
-    Returns:
-        - status: "ok" if all agents are running
-        - agent_states: dict of agent_id → state
-        - ws_connections: number of active WebSocket connections
-    """
     ws_manager = get_websocket_manager()
-    agent_states = {
-        a.identity.id: a.state.value for a in get_all_agents()
-    }
-    running_count = sum(1 for s in agent_states.values() if s != "SLEEPING")
+    agent_states = {agent.identity.id: agent.state.value for agent in get_all_agents()}
+    running_count = sum(1 for state in agent_states.values() if state != "SLEEPING")
 
     return {
         "status": "ok" if running_count > 0 else "degraded",
@@ -204,46 +156,29 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# WebSocket entry point
-# ---------------------------------------------------------------------------
-
 @app.websocket("/ws/{client_id}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    client_id: str,
-) -> None:
-    """
-    Main WebSocket endpoint.
+async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
+    """Accept a bounded client identifier and relay subscribed agent events."""
 
-    After connecting, the client should send a subscribe message:
-        {"action": "subscribe", "agents": ["luna", "shadow"], "symbols": ["BTC-USD"]}
-
-    The server then pushes all relevant events in real time.
-    """
     ws_manager = get_websocket_manager()
-
-    # Validate client_id (simple slug check)
     if not client_id or len(client_id) > 64:
         await websocket.close(code=4003, reason="Invalid client_id")
         return
 
-    # Extract user from query param or header
     user_id: str | None = websocket.query_params.get("user_id")
-
     info = await ws_manager.connect(websocket, client_id, user_id=user_id)
 
     try:
-        # Send welcome message
-        await info.send("welcome", {
-            "client_id": client_id,
-            "message": "Connected to Home for AI — subscribe to agents or symbols to start.",
-        })
-
+        await info.send(
+            "welcome",
+            {
+                "client_id": client_id,
+                "message": "Connected to Home for AI. Subscribe to agents or symbols to start.",
+            },
+        )
         while True:
             raw = await websocket.receive_text()
             await ws_manager.handle_client_message(client_id, raw)
-
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: %s", client_id)
     except Exception as exc:
@@ -252,22 +187,11 @@ async def websocket_endpoint(
         ws_manager.disconnect(client_id)
 
 
-# ---------------------------------------------------------------------------
-# Global exception handler
-# ---------------------------------------------------------------------------
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception on %s: %s", request.url.path, exc)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"},
-    )
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
-
-# ---------------------------------------------------------------------------
-# Dev server entry point
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     uvicorn.run(

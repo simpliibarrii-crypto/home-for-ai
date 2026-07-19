@@ -31,7 +31,7 @@ anyhow = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-reqwest = { version = "0.13", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.13", features = ["json", "rustls"] }
 url = "2.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }

@@ -293,17 +293,16 @@ function seedCeoSettings() {
   const existing = db.select().from(ceoSettings).all();
   if (existing.length > 0) return;
 
-  // CEO password: phone number 8193195117, hashed with SHA-256 + salt 'homeforai_ceo_salt_2026'
-  // Pre-computed hash (phone + salt): do NOT log or expose this value
-  // NOTE: Replace with bcrypt in production: bcrypt.hashSync(phone, 12)
-  // CEO: Change this credential immediately before going live
-  // TODO: Replace 2FA with Apple Push Notification + DeviceCheck API for real iOS-linked auth
-  const passwordHash = "98df1db92418c37e595c2dcec5a6226c0dd69e8c2aedec3aff0f15d623d2302a";
+  // Fail closed. Privileged access is unavailable until deployment secrets
+  // are supplied. Never derive these values from a phone number or commit them.
+  const passwordHash = process.env.CEO_PASSWORD_HASH ?? "";
+  const authSalt = process.env.CEO_AUTH_SALT ?? "";
+  const twoFactorCode = process.env.CEO_2FA_CODE ?? "";
 
   const ceoDefaults: InsertCeoSetting[] = [
     { key: "ceo_password_hash", value: passwordHash },
-    { key: "ceo_salt", value: "homeforai_ceo_salt_2026" },
-    { key: "ceo_2fa_code", value: "847291" }, // TODO: Replace with Apple Push Notification + DeviceCheck API in production
+    { key: "ceo_salt", value: authSalt },
+    { key: "ceo_2fa_code", value: twoFactorCode },
     { key: "payout_wallet", value: "" },
     { key: "payout_schedule", value: "weekly" },
     { key: "payout_threshold", value: "500" },

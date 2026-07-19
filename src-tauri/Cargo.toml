@@ -36,7 +36,7 @@ anyhow = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true, features = ["json", "rustls"] }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 chrono = { workspace = true, features = ["serde"] }
