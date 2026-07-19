@@ -1,7 +1,6 @@
 //! Tauri App Library
 
 pub mod commands;
-pub mod models;
 pub mod services;
 pub mod utils;
 
@@ -68,5 +67,5 @@ pub fn run() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while running Tauri application");
 }
