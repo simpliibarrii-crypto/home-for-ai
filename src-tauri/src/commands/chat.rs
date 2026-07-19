@@ -1,8 +1,9 @@
 //! Chat Commands
 
-use tauri::{AppHandle, Manager};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tauri::AppHandle;
+use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -40,25 +41,28 @@ pub struct SendMessageResponse {
     pub content: String,
 }
 
+fn backend_url(app: &AppHandle) -> Result<String, String> {
+    let store = app
+        .store("settings.json")
+        .map_err(|error| error.to_string())?;
+    let value = store.get("settings").unwrap_or_default();
+    let settings: crate::commands::settings::AppSettings =
+        serde_json::from_value(value).unwrap_or_default();
+    Ok(settings.backend_url.trim_end_matches('/').to_string())
+}
+
 #[tauri::command]
 pub async fn send_message(
     app: AppHandle,
     request: SendMessageRequest,
 ) -> Result<SendMessageResponse, String> {
-    // Get backend URL from settings
-    let settings_store = app.store("settings.json").map_err(|e| e.to_string())?;
-    let settings_value = settings_store.get("settings").cloned().unwrap_or_default();
-    let settings: crate::commands::settings::AppSettings = serde_json::from_value(settings_value).unwrap_or_default();
-    
-    let backend_url = settings.backend_url.trim_end_matches('/');
-    
-    // Create or get conversation
-    let conversation_id = request.conversation_id.unwrap_or_else(|| Uuid::new_v4().to_string());
-    
-    // Call Python backend
-    let client = reqwest::Client::new();
-    let response = client
-        .post(format!("{}/api/chat/completions", backend_url))
+    let backend_url = backend_url(&app)?;
+    let conversation_id = request
+        .conversation_id
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    let response = reqwest::Client::new()
+        .post(format!("{backend_url}/api/chat/completions"))
         .json(&serde_json::json!({
             "conversation_id": conversation_id,
             "message": request.content,
@@ -68,72 +72,74 @@ pub async fn send_message(
         }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
-    
-    let response_json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
-    
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?;
+
+    let response_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|error| error.to_string())?;
+
     Ok(SendMessageResponse {
-        conversation_id: response_json["conversation_id"].as_str().unwrap_or(&conversation_id).to_string(),
+        conversation_id: response_json["conversation_id"]
+            .as_str()
+            .unwrap_or(&conversation_id)
+            .to_string(),
         message_id: Uuid::new_v4().to_string(),
-        content: response_json["response"].as_str().unwrap_or("").to_string(),
+        content: response_json["response"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
     })
 }
 
 #[tauri::command]
 pub async fn get_conversations(app: AppHandle) -> Result<Vec<Conversation>, String> {
-    let settings_store = app.store("settings.json").map_err(|e| e.to_string())?;
-    let settings_value = settings_store.get("settings").cloned().unwrap_or_default();
-    let settings: crate::commands::settings::AppSettings = serde_json::from_value(settings_value).unwrap_or_default();
-    
-    let backend_url = settings.backend_url.trim_end_matches('/');
-    
-    let client = reqwest::Client::new();
-    let response = client
-        .get(format!("{}/api/conversations", backend_url))
+    reqwest::Client::new()
+        .get(format!("{}/api/conversations", backend_url(&app)?))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
-    
-    let conversations: Vec<Conversation> = response.json().await.map_err(|e| e.to_string())?;
-    
-    Ok(conversations)
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?
+        .json()
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub async fn create_conversation(app: AppHandle, title: String) -> Result<Conversation, String> {
-    let settings_store = app.store("settings.json").map_err(|e| e.to_string())?;
-    let settings_value = settings_store.get("settings").cloned().unwrap_or_default();
-    let settings: crate::commands::settings::AppSettings = serde_json::from_value(settings_value).unwrap_or_default();
-    
-    let backend_url = settings.backend_url.trim_end_matches('/');
-    
-    let client = reqwest::Client::new();
-    let response = client
-        .post(format!("{}/api/conversations", backend_url))
+pub async fn create_conversation(
+    app: AppHandle,
+    title: String,
+) -> Result<Conversation, String> {
+    reqwest::Client::new()
+        .post(format!("{}/api/conversations", backend_url(&app)?))
         .json(&serde_json::json!({ "title": title }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
-    
-    let conversation: Conversation = response.json().await.map_err(|e| e.to_string())?;
-    
-    Ok(conversation)
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?
+        .json()
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub async fn delete_conversation(app: AppHandle, conversation_id: String) -> Result<(), String> {
-    let settings_store = app.store("settings.json").map_err(|e| e.to_string())?;
-    let settings_value = settings_store.get("settings").cloned().unwrap_or_default();
-    let settings: crate::commands::settings::AppSettings = serde_json::from_value(settings_value).unwrap_or_default();
-    
-    let backend_url = settings.backend_url.trim_end_matches('/');
-    
-    let client = reqwest::Client::new();
-    client
-        .delete(format!("{}/api/conversations/{}", backend_url, conversation_id))
+pub async fn delete_conversation(
+    app: AppHandle,
+    conversation_id: String,
+) -> Result<(), String> {
+    reqwest::Client::new()
+        .delete(format!(
+            "{}/api/conversations/{conversation_id}",
+            backend_url(&app)?
+        ))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
-    
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?;
     Ok(())
 }
