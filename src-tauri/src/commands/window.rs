@@ -1,49 +1,66 @@
 //! Window Commands
 
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{AppHandle, Manager};
+
+fn main_window(app: &AppHandle) -> Result<tauri::WebviewWindow, String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "Main window not found".to_string())
+}
+
+#[tauri::command]
+pub fn show_window(app: AppHandle) -> Result<(), String> {
+    let window = main_window(&app)?;
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn hide_window(app: AppHandle) -> Result<(), String> {
+    main_window(&app)?
+        .hide()
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn set_window_title(app: AppHandle, title: String) -> Result<(), String> {
+    main_window(&app)?
+        .set_title(&title)
+        .map_err(|error| error.to_string())
+}
 
 #[tauri::command]
 pub fn minimize_window(app: AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        window.minimize().map_err(|e| e.to_string())
-    } else {
-        Err("Main window not found".to_string())
-    }
+    main_window(&app)?
+        .minimize()
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 pub fn maximize_window(app: AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        if window.is_maximized().unwrap_or(false) {
-            window.unmaximize().map_err(|e| e.to_string())
-        } else {
-            window.maximize().map_err(|e| e.to_string())
-        }
-    } else {
-        Err("Main window not found".to_string())
-    }
+    main_window(&app)?
+        .maximize()
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn unmaximize_window(app: AppHandle) -> Result<(), String> {
+    main_window(&app)?
+        .unmaximize()
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 pub fn close_window(app: AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        window.hide().map_err(|e| e.to_string())
-    } else {
-        Err("Main window not found".to_string())
-    }
+    hide_window(app)
 }
 
 #[tauri::command]
 pub fn toggle_window(app: AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        let is_visible = window.is_visible().unwrap_or(false);
-        if is_visible {
-            window.hide().map_err(|e| e.to_string())
-        } else {
-            window.show().map_err(|e| e.to_string())?;
-            window.set_focus().map_err(|e| e.to_string())
-        }
+    let window = main_window(&app)?;
+    if window.is_visible().map_err(|error| error.to_string())? {
+        window.hide().map_err(|error| error.to_string())
     } else {
-        Err("Main window not found".to_string())
+        window.show().map_err(|error| error.to_string())?;
+        window.set_focus().map_err(|error| error.to_string())
     }
 }
